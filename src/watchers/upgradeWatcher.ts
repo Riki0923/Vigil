@@ -13,7 +13,7 @@ export type UpgradeCallback = (
   proxyAddress: string,
   newImplAddress: string,
   oldImplAddress: string,
-  blockNumber: number
+  block: ethers.Block
 ) => Promise<void>;
 
 export async function startUpgradeWatcher(
@@ -22,11 +22,19 @@ export async function startUpgradeWatcher(
 ): Promise<void> {
   provider.on("block", async (blockNumber: number) => {
     try {
-      const logs = await provider.getLogs({
-        fromBlock: blockNumber,
-        toBlock: blockNumber,
-        topics: [UPGRADED_TOPIC],
-      });
+      const [logs, block] = await Promise.all([
+        provider.getLogs({
+          fromBlock: blockNumber,
+          toBlock: blockNumber,
+          topics: [UPGRADED_TOPIC],
+        }),
+        provider.getBlock(blockNumber),
+      ]);
+
+      if (!block) {
+        console.warn(`[UpgradeWatcher] Could not fetch block ${blockNumber}`);
+        return;
+      }
 
       for (const log of logs) {
         const parsed = UPGRADED_IFACE.parseLog({
@@ -50,7 +58,7 @@ export async function startUpgradeWatcher(
         console.log(`  New impl:        ${newImplAddress}`);
         console.log(`  Tx:              ${txHash}`);
 
-        await onUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, blockNumber);
+        await onUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress);
       }
     } catch (err) {
       console.error(`[UpgradeWatcher] Error scanning block ${blockNumber}:`, err);

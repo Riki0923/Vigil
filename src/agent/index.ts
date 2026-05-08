@@ -15,6 +15,7 @@ import { diffABIs, assessFunctionRisk, type ABIItem } from "../sourcify/diffFunc
 import { createAlert, AlertSeverity } from "../alerts/index.js";
 import { emitAlert } from "../delivery/emit.js";
 import { analyseUpgrade } from "./analyser.js";
+import { initSwarm, publishAlert, publishBlock } from "../swarm/index.js";
 
 dotenv.config();
 
@@ -44,7 +45,7 @@ export async function processUpgrade(
   newImplAddress: string,
   oldImplAddress: string,
   provider: ethers.JsonRpcProvider,
-  blockNumber?: number
+  block: ethers.Block
 ): Promise<void> {
   console.log(`\n[Pipeline] ── Upgrade detected ───────────────────────`);
   console.log(`  Tx:       ${txHash}`);
@@ -169,7 +170,7 @@ export async function processUpgrade(
     natSpec,
   });
 
-  await emitAlert(createAlert({
+  const alert = createAlert({
     severity,
     proxyAddress,
     implementationAddress: newImplAddress,
@@ -185,9 +186,20 @@ export async function processUpgrade(
         : "ABI unavailable",
       matchType ? `Match: ${matchType}` : null,
     ].filter(Boolean).join(" | "),
-    rawData: { storageDiff, abiDiff, functionRiskFlags, matchType, contractMeta, natSpec },
+    rawData: { storageDiff, abiDiff, functionRiskFlags, matchType, contractMeta, natSpec, block },
     analysis,
-  }), blockNumber);
+  });
+
+  const batchId = process.env.SWARM_POSTAGE_STAMP;
+  if (batchId) {
+    const [alertHash] = await Promise.all([
+      publishAlert(alert, batchId),
+      publishBlock(block, block.number, batchId),
+    ]);
+    if (alertHash) alert.swarmHash = alertHash;
+  }
+
+  logAlert(alert);
 }
 
 async function main(): Promise<void> {
@@ -198,10 +210,12 @@ async function main(): Promise<void> {
   console.log(`[Vigil] Connected to network: ${network.name} (chainId: ${network.chainId})`);
   console.log(`[Vigil] Current block: ${blockNumber}`);
 
+  initSwarm();
+
   await startUpgradeWatcher(
     provider,
-    (txHash, proxyAddress, newImplAddress, oldImplAddress, blockNumber) =>
-      processUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, provider, blockNumber)
+    (txHash, proxyAddress, newImplAddress, oldImplAddress) =>
+      processUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, provider)
   );
 }
 

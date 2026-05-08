@@ -20,6 +20,7 @@ export interface Alert {
   message: string;
   rawData: unknown;
   analysis?: AnalysisResult;
+  swarmHash?: string;
 }
 
 type AlertInput = Omit<Alert, "id" | "timestamp">;
@@ -53,6 +54,9 @@ export function logAlert(alert: Alert): void {
   console.log(`  Tx:         ${alert.txHash}`);
   console.log(`  Verified:   ${alert.isVerified ? "yes" : "no"}`);
   console.log(`  Layout:     ${alert.hasStorageLayout ? "yes" : "no"}`);
+  if (alert.swarmHash) {
+    console.log(`  Swarm:      ${alert.swarmHash}`);
+  }
   if (alert.analysis) {
     console.log(`  AI Summary: ${alert.analysis.summary}`);
     console.log(`  AI Explain: ${alert.analysis.explanation}`);

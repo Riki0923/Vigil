@@ -27,6 +27,7 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@ethersphere/bee-js": "^12.1.0",
     "@langchain/core": "^1.1.45",
     "axios": "^1.16.0",
     "dotenv": "^17.4.2",
