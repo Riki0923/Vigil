@@ -1,6 +1,21 @@
 import type { AlertSeverity } from "./types";
 
+export const BASE_MAINNET_CHAIN_ID = 8453;
 export const BASE_SEPOLIA_CHAIN_ID = 84532;
+export const DEFAULT_CHAIN_ID = BASE_MAINNET_CHAIN_ID;
+
+export function chainName(chainId: number): string {
+  switch (chainId) {
+    case BASE_MAINNET_CHAIN_ID:
+      return "Base";
+    case BASE_SEPOLIA_CHAIN_ID:
+      return "Base Sepolia";
+    case 1:
+      return "Ethereum";
+    default:
+      return `chain ${chainId}`;
+  }
+}
 
 export function truncateAddress(address: string, chars = 4): string {
   if (address.length <= 2 + chars * 2) return address;
@@ -42,18 +57,16 @@ export function severityRank(s: AlertSeverity): number {
   return { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 }[s];
 }
 
-export function basescanTxUrl(txHash: string, chainId = BASE_SEPOLIA_CHAIN_ID): string {
-  const base =
-    chainId === BASE_SEPOLIA_CHAIN_ID
-      ? "https://sepolia.basescan.org"
-      : "https://basescan.org";
-  return `${base}/tx/${txHash}`;
+function basescanRoot(chainId: number): string {
+  return chainId === BASE_SEPOLIA_CHAIN_ID
+    ? "https://sepolia.basescan.org"
+    : "https://basescan.org";
 }
 
-export function basescanAddressUrl(address: string, chainId = BASE_SEPOLIA_CHAIN_ID): string {
-  const base =
-    chainId === BASE_SEPOLIA_CHAIN_ID
-      ? "https://sepolia.basescan.org"
-      : "https://basescan.org";
-  return `${base}/address/${address}`;
+export function basescanTxUrl(txHash: string, chainId = DEFAULT_CHAIN_ID): string {
+  return `${basescanRoot(chainId)}/tx/${txHash}`;
+}
+
+export function basescanAddressUrl(address: string, chainId = DEFAULT_CHAIN_ID): string {
+  return `${basescanRoot(chainId)}/address/${address}`;
 }
