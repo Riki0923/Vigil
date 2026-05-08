@@ -1,22 +1,26 @@
 import axios from "axios";
 
 const BASE_URL = "https://sourcify.dev/server";
-export const BASE_SEPOLIA_CHAIN_ID = 84532;
-
-interface SourcifyFile {
-  name: string;
-  path: string;
-  content: string;
-}
-
-interface SourcifyFilesResponse {
-  files: SourcifyFile[];
-}
+export const BASE_SEPOLIA_CHAIN_ID = 8453;
 
 interface CheckByAddressResult {
   address: string;
   status: string;
   chainIds?: string[];
+}
+
+interface SourcifyV2Response {
+  match: "exact" | "partial" | null;
+  compilationArtifacts?: {
+    abi?: unknown[];
+    storageLayout?: StorageLayout;
+  };
+  onchainInfo?: {
+    creationTransactionHash?: string;
+  };
+  compilation?: {
+    compilerVersion?: string;
+  };
 }
 
 export interface StorageLayoutEntry {
@@ -31,6 +35,29 @@ export interface StorageLayoutEntry {
 export interface StorageLayout {
   storage: StorageLayoutEntry[];
   types: Record<string, unknown>;
+}
+
+export interface ContractMeta {
+  matchType: "exact" | "partial" | null;
+  creationTxHash: string | null;
+  compilerVersion: string | null;
+}
+
+async function fetchV2(address: string, chainId: number): Promise<SourcifyV2Response | null> {
+  try {
+    const { data } = await axios.get<SourcifyV2Response>(
+      `${BASE_URL}/v2/contract/${chainId}/${address}`,
+      { params: { fields: "all" } }
+    );
+    return data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 404) {
+      console.log(`[Sourcify] Contract not found for ${address}`);
+      return null;
+    }
+    console.error(`[Sourcify] v2 fetch failed for ${address}:`, err);
+    return null;
+  }
 }
 
 export async function isVerified(
@@ -57,72 +84,54 @@ export async function isVerified(
   }
 }
 
-export async function getContractSource(
-  address: string,
-  chainId: number
-): Promise<SourcifyFile[] | null> {
-  try {
-    const { data } = await axios.get<SourcifyFilesResponse>(
-      `${BASE_URL}/files/any/${chainId}/${address}`
-    );
-
-    console.log(
-      `[Sourcify] Source found for ${address} — ${data.files.length} file(s)`
-    );
-
-    return data.files;
-  } catch (err) {
-    if (axios.isAxiosError(err) && err.response?.status === 404) {
-      console.log(`[Sourcify] Source not found for ${address}`);
-      return null;
-    }
-    console.error(`[Sourcify] getContractSource failed for ${address}:`, err);
-    return null;
-  }
-}
-
 export async function getStorageLayout(
   address: string,
   chainId: number
 ): Promise<StorageLayout | null> {
-  const files = await getContractSource(address, chainId);
-  if (!files) return null;
+  const data = await fetchV2(address, chainId);
+  if (!data) return null;
 
-  const metadataFile = files.find((f) => f.name === "metadata.json");
-  if (!metadataFile) {
-    console.log(`[Sourcify] No metadata.json found for ${address}`);
-    return null;
-  }
+  const layout = data.compilationArtifacts?.storageLayout ?? null;
 
-  try {
-    const metadata = JSON.parse(metadataFile.content) as {
-      output?: {
-        contracts?: Record<
-          string,
-          Record<string, { storageLayout?: StorageLayout }>
-        >;
-      };
-    };
+  console.log(
+    `[Sourcify] Storage layout for ${address}: ${layout ? `found (${layout.storage.length} slot(s))` : "not found"}`
+  );
 
-    const contracts = metadata.output?.contracts;
-    if (!contracts) {
-      console.log(`[Sourcify] No compiler output in metadata for ${address}`);
-      return null;
-    }
+  return layout;
+}
 
-    for (const fileContracts of Object.values(contracts)) {
-      for (const contract of Object.values(fileContracts)) {
-        if (contract.storageLayout) {
-          console.log(`[Sourcify] Storage layout found for ${address}`);
-          return contract.storageLayout;
-        }
-      }
-    }
+export async function getABI(
+  address: string,
+  chainId: number
+): Promise<unknown[] | null> {
+  const data = await fetchV2(address, chainId);
+  if (!data) return null;
 
-    console.log(`[Sourcify] Storage layout not present in metadata for ${address}`);
-    return null;
-  } catch (err) {
-    console.error(`[Sourcify] Failed to parse metadata for ${address}:`, err);
-    return null;
-  }
+  const abi = data.compilationArtifacts?.abi ?? null;
+
+  console.log(
+    `[Sourcify] ABI for ${address}: ${abi ? `found (${abi.length} item(s))` : "not found"}`
+  );
+
+  return abi;
+}
+
+export async function getContractMeta(
+  address: string,
+  chainId: number
+): Promise<ContractMeta | null> {
+  const data = await fetchV2(address, chainId);
+  if (!data) return null;
+
+  const meta: ContractMeta = {
+    matchType: data.match ?? null,
+    creationTxHash: data.onchainInfo?.creationTransactionHash ?? null,
+    compilerVersion: data.compilation?.compilerVersion ?? null,
+  };
+
+  console.log(
+    `[Sourcify] Meta for ${address}: match=${meta.matchType}, compiler=${meta.compilerVersion ?? "unknown"}`
+  );
+
+  return meta;
 }

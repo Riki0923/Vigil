@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 // import Groq from "groq-sdk";
+import type { RiskFlag } from "../sourcify/diffFunctions.js";
 
 let client: OpenAI | null = null;
 function getClient(): OpenAI {
@@ -30,7 +31,9 @@ export interface AnalyseUpgradeParams {
   proxyAddress: string;
   oldImplementation: string;
   newImplementation: string;
-  diff: unknown;
+  storageDiff: unknown;
+  abiDiff: unknown;
+  functionRiskFlags: RiskFlag[];
   severity: string;
   sourceCode?: string;
 }
@@ -38,7 +41,16 @@ export interface AnalyseUpgradeParams {
 export async function analyseUpgrade(
   params: AnalyseUpgradeParams
 ): Promise<AnalysisResult> {
-  const { proxyAddress, oldImplementation, newImplementation, diff, severity, sourceCode } = params;
+  const {
+    proxyAddress,
+    oldImplementation,
+    newImplementation,
+    storageDiff,
+    abiDiff,
+    functionRiskFlags,
+    severity,
+    sourceCode,
+  } = params;
 
   const userMessage = `
 Analyse this proxy upgrade and return a JSON object with fields:
@@ -51,9 +63,18 @@ Upgrade details:
 - Proxy: ${proxyAddress}
 - Old implementation: ${oldImplementation}
 - New implementation: ${newImplementation}
-- Assessed severity: ${severity}
-- Storage layout diff:
-${JSON.stringify(diff, null, 2)}
+- Final assessed severity: ${severity}
+
+Storage layout diff:
+${JSON.stringify(storageDiff, null, 2)}
+
+ABI diff:
+${JSON.stringify(abiDiff, null, 2)}
+
+Function risk flags:
+${functionRiskFlags.length > 0
+  ? functionRiskFlags.map((f) => `[${f.level}] ${f.message}`).join("\n")
+  : "None"}
 ${sourceCode ? `\nSource code excerpt:\n${sourceCode}` : ""}
 `.trim();
 
@@ -81,7 +102,7 @@ ${sourceCode ? `\nSource code excerpt:\n${sourceCode}` : ""}
 
     return {
       summary: `Proxy ${proxyAddress} upgraded to unanalysed implementation ${newImplementation}.`,
-      explanation: `Automated AI analysis failed. The upgrade carries a severity of ${severity} based on storage layout diff alone. Manual review is recommended.`,
+      explanation: `Automated AI analysis failed. The upgrade carries a severity of ${severity} based on diffs alone. Manual review is recommended.`,
       recommendation: "Review the new implementation manually before relying on this upgrade.",
       confidence: "low",
     };
