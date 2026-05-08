@@ -26,3 +26,13 @@ body {
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+@keyframes block-tick {
+  0%, 72%, 100% { color: #a1a1aa; }
+  80% { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
+  88% { color: #a1a1aa; }
+}
+
+.block-number-live {
+  animation: block-tick 6s ease-in-out infinite;
+}

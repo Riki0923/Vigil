@@ -21,8 +21,43 @@ import {
   truncateAddress,
   truncateHash,
 } from "@/lib/format";
+import { CopyButton } from "./components/CopyButton";
+import { UpgradesChart, type ChartBucket } from "./components/UpgradesChart";
 
 export const dynamic = "force-dynamic";
+
+function buildChartData(alerts: Alert[]): ChartBucket[] {
+  const now = new Date();
+  const currentHour = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    now.getHours(),
+    0,
+    0,
+    0,
+  );
+
+  const buckets = Array.from({ length: 24 }, (_, i) => {
+    const hoursAgo = 23 - i;
+    const start = currentHour.getTime() - hoursAgo * 3_600_000;
+    const end = start + 3_600_000;
+    const label = `${new Date(start).getHours().toString().padStart(2, "0")}:00`;
+    return { label, count: 0, isCurrent: hoursAgo === 0, start, end };
+  });
+
+  for (const alert of alerts) {
+    const ts = new Date(alert.timestamp).getTime();
+    for (const bucket of buckets) {
+      if (ts >= bucket.start && ts < bucket.end) {
+        bucket.count++;
+        break;
+      }
+    }
+  }
+
+  return buckets.map(({ label, count, isCurrent }) => ({ label, count, isCurrent }));
+}
 
 export default async function Home() {
   const { alerts, source, updatedAt } = await loadAlerts();
@@ -30,6 +65,11 @@ export default async function Home() {
     .map((a) => a.blockNumber)
     .filter((b): b is number => typeof b === "number");
   const latestBlock = blockNumbers.length > 0 ? Math.max(...blockNumbers) : null;
+
+  const totalUpgrades = alerts.length;
+  const criticalAlerts = alerts.filter((a) => a.severity === "CRITICAL").length;
+  const unverifiedContracts = alerts.filter((a) => !a.isVerified).length;
+  const chartData = buildChartData(alerts);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -40,39 +80,35 @@ export default async function Home() {
               V
             </div>
             <div>
-              <h1 className="font-semibold tracking-tight text-zinc-50">
-                Vigil
-              </h1>
+              <h1 className="font-semibold tracking-tight text-zinc-50">Vigil</h1>
               <p className="text-xs text-zinc-500">Vigil never sleeps</p>
             </div>
           </div>
+
           <div className="flex items-center gap-3 text-xs">
             <div className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/50 px-3 py-1.5">
+              <span className="text-zinc-500">{source === "live" ? "live" : "mock"}</span>
+              <span className="text-zinc-700">·</span>
               <span
-                className={`pulse-glow inline-block h-2 w-2 rounded-full ${
+                className={`pulse-glow inline-block h-2 w-2 shrink-0 rounded-full ${
                   source === "live" ? "bg-green-500" : "bg-amber-500"
                 }`}
               />
               <span className="text-zinc-300">
-                {source === "live" ? "Live" : "Mock data"}
-              </span>
-              <span className="text-zinc-600">·</span>
-              <span className="text-zinc-300">
-                Watching{" "}
-                <span className="font-medium text-zinc-100">Base</span>
+                Watching <span className="font-medium text-zinc-100">Base</span>
               </span>
               {latestBlock !== null && (
                 <>
-                  <span className="text-zinc-600">·</span>
-                  <span className="font-mono text-zinc-400">
+                  <span className="text-zinc-700">·</span>
+                  <span className="font-mono block-number-live">
                     block {latestBlock.toLocaleString()}
                   </span>
                 </>
               )}
               {source === "live" && updatedAt && (
                 <>
-                  <span className="text-zinc-600">·</span>
-                  <span className="font-mono text-zinc-400">
+                  <span className="text-zinc-700">·</span>
+                  <span className="font-mono text-zinc-500">
                     updated {relativeTime(updatedAt)}
                   </span>
                 </>
@@ -87,8 +123,7 @@ export default async function Home() {
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Alerts</h2>
             <p className="mt-1 text-sm text-zinc-400">
-              {alerts.length} upgrade{alerts.length === 1 ? "" : "s"} detected
-              on Base
+              {alerts.length} upgrade{alerts.length === 1 ? "" : "s"} detected on Base
               {source === "mock" && (
                 <span className="ml-2 rounded-md bg-amber-950/60 px-2 py-0.5 text-xs text-amber-300 border border-amber-900">
                   showing mock data — agent hasn&apos;t emitted yet
@@ -96,6 +131,18 @@ export default async function Home() {
               )}
             </p>
           </div>
+        </div>
+
+        {/* Stats row */}
+        <div className="mb-5 grid grid-cols-3 gap-3">
+          <StatCard label="Total Upgrades Detected" value={totalUpgrades} />
+          <StatCard label="Critical Alerts" value={criticalAlerts} accent="red" />
+          <StatCard label="Unverified Contracts" value={unverifiedContracts} accent="amber" />
+        </div>
+
+        {/* Chart */}
+        <div className="mb-6">
+          <UpgradesChart data={chartData} />
         </div>
 
         <ul className="flex flex-col gap-3">
@@ -109,6 +156,47 @@ export default async function Home() {
           <span className="font-mono">vigil-agent.eth</span>
         </footer>
       </main>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent?: "red" | "amber";
+}) {
+  const numberColor =
+    accent === "red"
+      ? "text-red-400"
+      : accent === "amber"
+        ? "text-amber-400"
+        : "text-zinc-100";
+  const topLine =
+    accent === "red"
+      ? "bg-red-500/25"
+      : accent === "amber"
+        ? "bg-amber-500/25"
+        : "bg-zinc-700/40";
+  const borderColor =
+    accent === "red"
+      ? "border-zinc-800 hover:border-red-900/60"
+      : accent === "amber"
+        ? "border-zinc-800 hover:border-amber-900/60"
+        : "border-zinc-800";
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-lg border ${borderColor} bg-zinc-900/40 px-5 py-4 transition-colors`}
+    >
+      <div className={`absolute inset-x-0 top-0 h-px ${topLine}`} />
+      <div className={`font-mono text-3xl font-bold tabular-nums leading-none ${numberColor}`}>
+        {value}
+      </div>
+      <div className="mt-2 text-xs leading-tight text-zinc-500">{label}</div>
     </div>
   );
 }
@@ -129,24 +217,29 @@ function AlertCard({ alert }: { alert: Alert }) {
         </span>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-3">
-            <h3 className="truncate text-sm font-semibold text-zinc-100">
-              {alert.message}
-            </h3>
-            <time className="shrink-0 text-xs text-zinc-500">
-              {relativeTime(alert.timestamp)}
-            </time>
+          {/* Title row */}
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="truncate text-sm font-semibold text-zinc-100">{alert.message}</h3>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                disabled
+                className="inline-flex cursor-not-allowed items-center gap-1 rounded border border-zinc-800 px-2 py-0.5 text-xs text-zinc-600 opacity-50"
+                title="Swarm integration coming soon"
+              >
+                Swarm <span className="text-zinc-700">↗</span>
+              </button>
+              <time className="text-xs text-zinc-500">{relativeTime(alert.timestamp)}</time>
+            </div>
           </div>
 
           {fullPipeline?.natSpec?.title && (
             <p className="mt-1 text-xs text-zinc-500">
               <span className="font-mono text-zinc-400">{fullPipeline.natSpec.title}</span>
-              {fullPipeline.natSpec.notice && (
-                <span> — {fullPipeline.natSpec.notice}</span>
-              )}
+              {fullPipeline.natSpec.notice && <span> — {fullPipeline.natSpec.notice}</span>}
             </p>
           )}
 
+          {/* Tags */}
           <div className="mt-2 flex flex-wrap gap-1.5">
             {!alert.isVerified && <Tag tone="critical">unverified source</Tag>}
             {alert.isVerified && !alert.hasStorageLayout && (
@@ -161,65 +254,68 @@ function AlertCard({ alert }: { alert: Alert }) {
             {fullPipeline && isExactMatch(fullPipeline.matchType) && (
               <Tag tone="info">exact match</Tag>
             )}
-            {fullPipeline?.storageDiff &&
-              fullPipeline.storageDiff.movedVariables.length > 0 && (
-                <Tag tone="critical">
-                  {fullPipeline.storageDiff.movedVariables.length} moved (collision)
-                </Tag>
-              )}
-            {fullPipeline?.abiDiff &&
-              fullPipeline.abiDiff.removedFunctions.length > 0 && (
-                <Tag tone="warn">
-                  −{fullPipeline.abiDiff.removedFunctions.length} fn
-                </Tag>
-              )}
-            {fullPipeline?.abiDiff &&
-              fullPipeline.abiDiff.addedFunctions.length > 0 && (
-                <Tag tone="info">
-                  +{fullPipeline.abiDiff.addedFunctions.length} fn
-                </Tag>
-              )}
-            {fullPipeline?.abiDiff &&
-              fullPipeline.abiDiff.modifiedFunctions.length > 0 && (
-                <Tag tone="warn">
-                  ~{fullPipeline.abiDiff.modifiedFunctions.length} fn
-                </Tag>
-              )}
+            {fullPipeline?.storageDiff && fullPipeline.storageDiff.movedVariables.length > 0 && (
+              <Tag tone="critical">
+                {fullPipeline.storageDiff.movedVariables.length} moved (collision)
+              </Tag>
+            )}
+            {fullPipeline?.abiDiff && fullPipeline.abiDiff.removedFunctions.length > 0 && (
+              <Tag tone="warn">−{fullPipeline.abiDiff.removedFunctions.length} fn</Tag>
+            )}
+            {fullPipeline?.abiDiff && fullPipeline.abiDiff.addedFunctions.length > 0 && (
+              <Tag tone="info">+{fullPipeline.abiDiff.addedFunctions.length} fn</Tag>
+            )}
+            {fullPipeline?.abiDiff && fullPipeline.abiDiff.modifiedFunctions.length > 0 && (
+              <Tag tone="warn">~{fullPipeline.abiDiff.modifiedFunctions.length} fn</Tag>
+            )}
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-zinc-500">
-            <a
-              href={basescanAddressUrl(alert.proxyAddress)}
-              target="_blank"
-              rel="noreferrer"
-              className="font-mono hover:text-zinc-300"
-            >
-              proxy {truncateAddress(alert.proxyAddress)}
-            </a>
+          {/* Address / tx row with copy buttons */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-500">
+            <span className="inline-flex items-center gap-0.5">
+              <a
+                href={basescanAddressUrl(alert.proxyAddress)}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono hover:text-zinc-300 transition-colors"
+              >
+                proxy {truncateAddress(alert.proxyAddress)}
+              </a>
+              <CopyButton text={alert.proxyAddress} />
+            </span>
+
             <span className="text-zinc-700">→</span>
-            <a
-              href={basescanAddressUrl(alert.implementationAddress)}
-              target="_blank"
-              rel="noreferrer"
-              className="font-mono hover:text-zinc-300"
-            >
-              impl {truncateAddress(alert.implementationAddress)}
-            </a>
+
+            <span className="inline-flex items-center gap-0.5">
+              <a
+                href={basescanAddressUrl(alert.implementationAddress)}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono hover:text-zinc-300 transition-colors"
+              >
+                impl {truncateAddress(alert.implementationAddress)}
+              </a>
+              <CopyButton text={alert.implementationAddress} />
+            </span>
+
             <span className="text-zinc-700">·</span>
-            <a
-              href={basescanTxUrl(alert.txHash)}
-              target="_blank"
-              rel="noreferrer"
-              className="font-mono hover:text-zinc-300"
-            >
-              tx {truncateHash(alert.txHash)}
-            </a>
+
+            <span className="inline-flex items-center gap-0.5">
+              <a
+                href={basescanTxUrl(alert.txHash)}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono hover:text-zinc-300 transition-colors"
+              >
+                tx {truncateHash(alert.txHash)}
+              </a>
+              <CopyButton text={alert.txHash} />
+            </span>
+
             {typeof alert.blockNumber === "number" && (
               <>
                 <span className="text-zinc-700">·</span>
-                <span className="font-mono">
-                  block {alert.blockNumber.toLocaleString()}
-                </span>
+                <span className="font-mono">block {alert.blockNumber.toLocaleString()}</span>
               </>
             )}
             {fullPipeline?.contractMeta?.compilerVersion && (
@@ -299,8 +395,12 @@ function RiskFlagRow({ flag }: { flag: RiskFlag }) {
   };
   return (
     <div className="flex items-start gap-2 rounded-md border border-zinc-800 bg-zinc-950/40 px-3 py-1.5 text-xs">
-      <span className={`mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${dotColor[flag.level]}`} />
-      <span className={`font-mono text-[10px] uppercase tracking-wider shrink-0 ${textColor[flag.level]}`}>
+      <span
+        className={`mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${dotColor[flag.level]}`}
+      />
+      <span
+        className={`font-mono text-[10px] uppercase tracking-wider shrink-0 ${textColor[flag.level]}`}
+      >
         {flag.level}
       </span>
       <span className="text-zinc-300">{flag.message}</span>
@@ -322,9 +422,7 @@ function SimilarContractsSection({ contracts }: { contracts: SimilarContract[] }
               <li key={c.address} className="flex items-center gap-3">
                 <span
                   className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${
-                    high
-                      ? "bg-red-950/60 text-red-300"
-                      : "bg-zinc-800 text-zinc-300"
+                    high ? "bg-red-950/60 text-red-300" : "bg-zinc-800 text-zinc-300"
                   }`}
                 >
                   {c.similarity.toFixed(2)}
@@ -340,7 +438,11 @@ function SimilarContractsSection({ contracts }: { contracts: SimilarContract[] }
   );
 }
 
-function StorageDiffSection({ diff }: { diff: NonNullable<FullPipelineRawData["storageDiff"]> }) {
+function StorageDiffSection({
+  diff,
+}: {
+  diff: NonNullable<FullPipelineRawData["storageDiff"]>;
+}) {
   return (
     <details className="mt-3">
       <summary className="cursor-pointer text-xs text-zinc-500 transition hover:text-zinc-300">
@@ -453,4 +555,3 @@ function Tag({
     </span>
   );
 }
-

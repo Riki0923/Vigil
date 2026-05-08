@@ -42,5 +42,5 @@
     "skipLibCheck": true,
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "web", "dist", "data"]
+  "exclude": ["node_modules", "frontend", "dist", "data"]
 }
