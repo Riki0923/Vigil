@@ -7,6 +7,7 @@ dotenv.config();
 
 const RPC_URL = process.env.RPC_URL ?? "";
 const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY ?? "";
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY ?? "";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -25,7 +26,9 @@ const config: HardhatUserConfig = {
   sourcify: {
     enabled: true,
   },
-  // etherscan intentionally unset — verifying via Sourcify only.
+  etherscan: {
+    apiKey: ETHERSCAN_API_KEY,
+  },
 };
 
 export default config;
