@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 // import Groq from "groq-sdk";
 import type { RiskFlag } from "../sourcify/diffFunctions.js";
+import type { NatSpec } from "../sourcify/index.js";
 
 let client: OpenAI | null = null;
 function getClient(): OpenAI {
@@ -35,6 +36,7 @@ export interface AnalyseUpgradeParams {
   abiDiff: unknown;
   functionRiskFlags: RiskFlag[];
   severity: string;
+  natSpec?: NatSpec | null;
   sourceCode?: string;
 }
 
@@ -49,6 +51,7 @@ export async function analyseUpgrade(
     abiDiff,
     functionRiskFlags,
     severity,
+    natSpec,
     sourceCode,
   } = params;
 
@@ -75,6 +78,11 @@ Function risk flags:
 ${functionRiskFlags.length > 0
   ? functionRiskFlags.map((f) => `[${f.level}] ${f.message}`).join("\n")
   : "None"}
+${natSpec ? `\nDeveloper documentation (NatSpec):
+- Title: ${natSpec.title ?? "n/a"}
+- Notice: ${natSpec.notice ?? "n/a"}
+- Details: ${natSpec.details ?? "n/a"}
+- Methods documented: ${Object.keys(natSpec.methods).length}` : ""}
 ${sourceCode ? `\nSource code excerpt:\n${sourceCode}` : ""}
 `.trim();
 

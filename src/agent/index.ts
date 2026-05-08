@@ -1,7 +1,15 @@
 import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 import { startUpgradeWatcher } from "../watchers/upgradeWatcher.js";
-import { isVerified, getStorageLayout, getABI, getContractMeta, BASE_SEPOLIA_CHAIN_ID } from "../sourcify/index.js";
+import {
+  isVerifiedWithRetry,
+  findSimilarContracts,
+  getStorageLayout,
+  getABI,
+  getContractMeta,
+  getNatSpec,
+  BASE_SEPOLIA_CHAIN_ID,
+} from "../sourcify/index.js";
 import { diffStorageLayouts, assessRisk } from "../sourcify/diffStorage.js";
 import { diffABIs, assessFunctionRisk, type ABIItem } from "../sourcify/diffFunctions.js";
 import { createAlert, logAlert, AlertSeverity } from "../alerts/index.js";
@@ -33,7 +41,8 @@ export async function processUpgrade(
   txHash: string,
   proxyAddress: string,
   newImplAddress: string,
-  oldImplAddress: string
+  oldImplAddress: string,
+  provider: ethers.JsonRpcProvider
 ): Promise<void> {
   console.log(`\n[Pipeline] ── Upgrade detected ───────────────────────`);
   console.log(`  Tx:       ${txHash}`);
@@ -41,12 +50,38 @@ export async function processUpgrade(
   console.log(`  Old impl: ${oldImplAddress}`);
   console.log(`  New impl: ${newImplAddress}`);
 
-  // Step 1 — verification
-  console.log(`\n[Pipeline] Step 1/4 — Checking Sourcify verification...`);
-  const verified = await isVerified(newImplAddress, BASE_SEPOLIA_CHAIN_ID);
+  if (newImplAddress.toLowerCase() === oldImplAddress.toLowerCase()) {
+    console.log(`[Pipeline] Skipping — same implementation address, checksum difference only`);
+    return;
+  }
+
+  // Step 1 — verification with retry
+  console.log(`\n[Pipeline] Step 1/4 — Checking Sourcify verification (up to 3 retries, 30s apart)...`);
+  const verified = await isVerifiedWithRetry(newImplAddress, BASE_SEPOLIA_CHAIN_ID, 3, 30_000);
 
   if (!verified) {
-    console.log(`[Pipeline] Not verified — emitting CRITICAL alert and stopping`);
+    console.log(`[Pipeline] Not verified after retries — checking for similar contracts...`);
+
+    const similarContracts = await findSimilarContracts(newImplAddress, BASE_SEPOLIA_CHAIN_ID, provider);
+
+    const highSimilarity = similarContracts.filter((c) => c.similarity >= 0.9);
+    const hasSimilar = similarContracts.length > 0;
+
+    let message = `Unverified implementation detected`;
+
+    if (highSimilarity.length > 0) {
+      message = `HIGH SIMILARITY to known contract — possible clone (${highSimilarity.length} match(es) above 0.9 score)`;
+      console.log(`[Pipeline] High similarity matches found:`);
+      for (const c of highSimilarity) {
+        console.log(`  ${c.address} (chain ${c.chainId}, score ${c.similarity.toFixed(3)})`);
+      }
+    } else if (hasSimilar) {
+      message = `Unverified implementation — similar to ${similarContracts.length} known contract(s) in Sourcify database`;
+      console.log(`[Pipeline] Similar contracts found: ${similarContracts.length}`);
+    } else {
+      console.log(`[Pipeline] No similar contracts found`);
+    }
+
     logAlert(createAlert({
       severity: AlertSeverity.CRITICAL,
       proxyAddress,
@@ -54,8 +89,8 @@ export async function processUpgrade(
       txHash,
       isVerified: false,
       hasStorageLayout: false,
-      message: `Unverified implementation detected`,
-      rawData: { oldImplAddress },
+      message,
+      rawData: { oldImplAddress, similarContracts },
     }));
     return;
   }
@@ -63,13 +98,14 @@ export async function processUpgrade(
   console.log(`[Pipeline] Verified — continuing analysis`);
 
   // Step 2 — fetch all data in parallel
-  console.log(`\n[Pipeline] Step 2/4 — Fetching layouts, ABIs, and contract meta...`);
-  const [oldLayout, newLayout, oldABI, newABI, contractMeta] = await Promise.all([
+  console.log(`\n[Pipeline] Step 2/4 — Fetching layouts, ABIs, meta, and NatSpec...`);
+  const [oldLayout, newLayout, oldABI, newABI, contractMeta, natSpec] = await Promise.all([
     getStorageLayout(oldImplAddress, BASE_SEPOLIA_CHAIN_ID),
     getStorageLayout(newImplAddress, BASE_SEPOLIA_CHAIN_ID),
     getABI(oldImplAddress, BASE_SEPOLIA_CHAIN_ID),
     getABI(newImplAddress, BASE_SEPOLIA_CHAIN_ID),
     getContractMeta(newImplAddress, BASE_SEPOLIA_CHAIN_ID),
+    getNatSpec(newImplAddress, BASE_SEPOLIA_CHAIN_ID),
   ]);
 
   const hasStorageLayout = !!oldLayout && !!newLayout;
@@ -78,6 +114,7 @@ export async function processUpgrade(
 
   console.log(`  Storage layout: ${hasStorageLayout ? "both found" : "incomplete"}`);
   console.log(`  ABI:            ${hasABI ? "both found" : "incomplete"}`);
+  console.log(`  NatSpec:        ${natSpec ? `found (${Object.keys(natSpec.methods).length} methods)` : "not found"}`);
   console.log(`  Match type:     ${matchType ?? "unknown"}`);
   console.log(`  Compiler:       ${contractMeta?.compilerVersion ?? "unknown"}`);
   console.log(`  Creation tx:    ${contractMeta?.creationTxHash ?? "unknown"}`);
@@ -127,6 +164,7 @@ export async function processUpgrade(
     abiDiff: abiDiff ?? "unavailable",
     functionRiskFlags,
     severity,
+    natSpec,
   });
 
   logAlert(createAlert({
@@ -145,7 +183,7 @@ export async function processUpgrade(
         : "ABI unavailable",
       matchType ? `Match: ${matchType}` : null,
     ].filter(Boolean).join(" | "),
-    rawData: { storageDiff, abiDiff, functionRiskFlags, matchType, contractMeta },
+    rawData: { storageDiff, abiDiff, functionRiskFlags, matchType, contractMeta, natSpec },
     analysis,
   }));
 }
@@ -158,7 +196,11 @@ async function main(): Promise<void> {
   console.log(`[Vigil] Connected to network: ${network.name} (chainId: ${network.chainId})`);
   console.log(`[Vigil] Current block: ${blockNumber}`);
 
-  await startUpgradeWatcher(provider, processUpgrade);
+  await startUpgradeWatcher(
+    provider,
+    (txHash, proxyAddress, newImplAddress, oldImplAddress) =>
+      processUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, provider)
+  );
 }
 
 main().catch((err) => {
