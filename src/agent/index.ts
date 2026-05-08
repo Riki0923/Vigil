@@ -94,7 +94,7 @@ export async function processUpgrade(
       hasStorageLayout: false,
       message,
       rawData: { oldImplAddress, similarContracts },
-    }), blockNumber);
+    }), block.number);
     return;
   }
 
@@ -199,7 +199,7 @@ export async function processUpgrade(
     if (alertHash) alert.swarmHash = alertHash;
   }
 
-  logAlert(alert);
+  await emitAlert(alert, block.number);
 }
 
 async function main(): Promise<void> {
@@ -214,8 +214,8 @@ async function main(): Promise<void> {
 
   await startUpgradeWatcher(
     provider,
-    (txHash, proxyAddress, newImplAddress, oldImplAddress) =>
-      processUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, provider)
+    (txHash, proxyAddress, newImplAddress, oldImplAddress, block) =>
+      processUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, provider, block)
   );
 }
 
