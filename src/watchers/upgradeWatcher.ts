@@ -58,7 +58,7 @@ export async function startUpgradeWatcher(
         console.log(`  New impl:        ${newImplAddress}`);
         console.log(`  Tx:              ${txHash}`);
 
-        await onUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress);
+        await onUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, block);
       }
     } catch (err) {
       console.error(`[UpgradeWatcher] Error scanning block ${blockNumber}:`, err);
