@@ -43,7 +43,8 @@ export async function processUpgrade(
   proxyAddress: string,
   newImplAddress: string,
   oldImplAddress: string,
-  provider: ethers.JsonRpcProvider
+  provider: ethers.JsonRpcProvider,
+  blockNumber?: number
 ): Promise<void> {
   console.log(`\n[Pipeline] ── Upgrade detected ───────────────────────`);
   console.log(`  Tx:       ${txHash}`);
@@ -92,7 +93,7 @@ export async function processUpgrade(
       hasStorageLayout: false,
       message,
       rawData: { oldImplAddress, similarContracts },
-    }));
+    }), blockNumber);
     return;
   }
 
@@ -186,7 +187,7 @@ export async function processUpgrade(
     ].filter(Boolean).join(" | "),
     rawData: { storageDiff, abiDiff, functionRiskFlags, matchType, contractMeta, natSpec },
     analysis,
-  }));
+  }), blockNumber);
 }
 
 async function main(): Promise<void> {
@@ -199,8 +200,8 @@ async function main(): Promise<void> {
 
   await startUpgradeWatcher(
     provider,
-    (txHash, proxyAddress, newImplAddress, oldImplAddress) =>
-      processUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, provider)
+    (txHash, proxyAddress, newImplAddress, oldImplAddress, blockNumber) =>
+      processUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, provider, blockNumber)
   );
 }
 

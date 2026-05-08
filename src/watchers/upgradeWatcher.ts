@@ -12,7 +12,8 @@ export type UpgradeCallback = (
   txHash: string,
   proxyAddress: string,
   newImplAddress: string,
-  oldImplAddress: string
+  oldImplAddress: string,
+  blockNumber: number
 ) => Promise<void>;
 
 export async function startUpgradeWatcher(
@@ -49,7 +50,7 @@ export async function startUpgradeWatcher(
         console.log(`  New impl:        ${newImplAddress}`);
         console.log(`  Tx:              ${txHash}`);
 
-        await onUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress);
+        await onUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, blockNumber);
       }
     } catch (err) {
       console.error(`[UpgradeWatcher] Error scanning block ${blockNumber}:`, err);
