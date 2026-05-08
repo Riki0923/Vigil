@@ -5,10 +5,14 @@ const UPGRADED_IFACE = new ethers.Interface([
   "event Upgraded(address indexed implementation)",
 ]);
 
+// EIP-1967 implementation slot
+const IMPL_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+
 export type UpgradeCallback = (
   txHash: string,
   proxyAddress: string,
-  implAddress: string
+  newImplAddress: string,
+  oldImplAddress: string
 ) => Promise<void>;
 
 export async function startUpgradeWatcher(
@@ -32,15 +36,20 @@ export async function startUpgradeWatcher(
         if (!parsed) continue;
 
         const proxyAddress = log.address;
-        const implAddress = parsed.args[0] as string;
+        const newImplAddress = parsed.args[0] as string;
         const txHash = log.transactionHash;
 
-        console.log(`[UpgradeWatcher] Upgrade detected at block ${blockNumber}`);
-        console.log(`  Proxy:          ${proxyAddress}`);
-        console.log(`  Implementation: ${implAddress}`);
-        console.log(`  Tx:             ${txHash}`);
+        // Read the implementation that was active before this block
+        const raw = await provider.getStorage(proxyAddress, IMPL_SLOT, blockNumber - 1);
+        const oldImplAddress = "0x" + raw.slice(-40);
 
-        await onUpgrade(txHash, proxyAddress, implAddress);
+        console.log(`[UpgradeWatcher] Upgrade detected at block ${blockNumber}`);
+        console.log(`  Proxy:           ${proxyAddress}`);
+        console.log(`  Old impl:        ${oldImplAddress}`);
+        console.log(`  New impl:        ${newImplAddress}`);
+        console.log(`  Tx:              ${txHash}`);
+
+        await onUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress);
       }
     } catch (err) {
       console.error(`[UpgradeWatcher] Error scanning block ${blockNumber}:`, err);
