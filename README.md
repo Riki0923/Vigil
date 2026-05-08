@@ -19,10 +19,11 @@ Subscribers (protocol teams, DAOs, researchers, other agents) consume the feed a
 ## Stack
 
 - TypeScript / Node.js
-- viem (Ethereum RPC + event subscription)
+- ethers (Ethereum RPC + event subscription)
 - Sourcify (verified source + storage layouts)
 - Apify SDK + X402 (pay-per-call context scraping)
 - Swarm bee-js (signed alert publishing)
+- LangChain (agent orchestration)
 - LLM provider (vulnerability assessment)
 
 ## Status
