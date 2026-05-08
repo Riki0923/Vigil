@@ -1,26 +1,183 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  /* Light cream theme — matches the logo's natural background */
+  --background: #f4ede0;
+  --foreground: #1a2348;
+
+  /* Surfaces (lighter to darker) */
+  --surface-0: #faf6ec;
+  --surface-1: #f4ede0;
+  --surface-2: #ebe0c7;
+  --surface-3: #d9cba9;
+
+  /* Brand colors extracted from logo */
+  --brand-navy: #1a2348;
+  --brand-navy-soft: #2a3458;
+  --brand-navy-tint: #3a4470;
+  --brand-cream: #f4ede0;
+  --brand-cream-warm: #ebe0c7;
+
+  /* Borders */
+  --border-soft: rgba(26, 35, 72, 0.08);
+  --border: rgba(26, 35, 72, 0.15);
+  --border-strong: rgba(26, 35, 72, 0.25);
+
+  /* Severity dots — match the logo's traffic-light palette */
+  --severity-low: #2ecc71;
+  --severity-medium: #f1c40f;
+  --severity-high: #f39c12;
+  --severity-critical: #e74c3c;
+
+  /* Severity surfaces (light tints for badges on light bg) */
+  --sev-low-bg: #d5f5e3;
+  --sev-low-text: #145a32;
+  --sev-low-border: #a8e6c9;
+
+  --sev-medium-bg: #fef7d3;
+  --sev-medium-text: #7d5c00;
+  --sev-medium-border: #f4dd6a;
+
+  --sev-high-bg: #fde4c2;
+  --sev-high-text: #7a3e00;
+  --sev-high-border: #f3c376;
+
+  --sev-critical-bg: #fbd5d0;
+  --sev-critical-text: #7c1d12;
+  --sev-critical-border: #f0a097;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-cream: var(--brand-cream);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-jakarta);
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1100px 500px at 50% -200px, rgba(26, 35, 72, 0.06), transparent 70%),
+    radial-gradient(800px 400px at 100% 0%, rgba(46, 204, 113, 0.05), transparent 60%),
+    var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
 
+/* --- typography --- */
+.font-display {
+  font-family: var(--font-jakarta), var(--font-geist-sans), system-ui, sans-serif;
+  letter-spacing: -0.015em;
+}
+
+/* --- brand surfaces --- */
+.surface-0 {
+  background: var(--surface-0);
+}
+.surface-1 {
+  background: var(--surface-1);
+}
+.surface-2 {
+  background: var(--surface-2);
+}
+
+.brand-cream-bg {
+  background: var(--brand-cream);
+}
+
+.brand-navy-bg {
+  background: var(--brand-navy);
+  color: var(--brand-cream);
+}
+
+/* --- borders --- */
+.brand-border-soft {
+  border-color: var(--border-soft);
+}
+.brand-border {
+  border-color: var(--border);
+}
+.brand-border-strong {
+  border-color: var(--border-strong);
+}
+
+/* --- text --- */
+.text-brand {
+  color: var(--brand-navy);
+}
+.text-brand-soft {
+  color: var(--brand-navy-tint);
+}
+
+/* --- primary / brand button (navy on cream — matches logo's contrast) --- */
+.btn-brand {
+  background: var(--brand-navy);
+  color: var(--brand-cream);
+  font-weight: 600;
+  border: 1px solid var(--brand-navy);
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  box-shadow: 0 1px 0 rgba(26, 35, 72, 0.1);
+}
+
+.btn-brand:hover {
+  background: var(--brand-navy-soft);
+  box-shadow: 0 2px 6px rgba(26, 35, 72, 0.15);
+}
+
+.btn-brand:active {
+  transform: translateY(1px);
+}
+
+.btn-brand:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-brand-ghost {
+  background: transparent;
+  color: var(--brand-navy);
+  border: 1px solid var(--border);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.btn-brand-ghost:hover {
+  background: rgba(26, 35, 72, 0.05);
+  border-color: var(--border-strong);
+}
+
+/* --- input focus rings --- */
+.input-brand {
+  background: var(--surface-0);
+  color: var(--brand-navy);
+  border: 1px solid var(--border);
+}
+.input-brand:focus {
+  outline: none;
+  border-color: var(--brand-navy);
+  box-shadow: 0 0 0 3px rgba(26, 35, 72, 0.12);
+}
+.input-brand::placeholder {
+  color: rgba(26, 35, 72, 0.4);
+}
+
+/* --- card surfaces --- */
+.card {
+  background: var(--surface-0);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 1px 2px rgba(26, 35, 72, 0.04);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.card:hover {
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgba(26, 35, 72, 0.06);
+}
+
+/* --- live status pulse + block tick --- */
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgb(34 197 94 / 0.6); }
-  50% { opacity: 0.85; box-shadow: 0 0 0 6px rgb(34 197 94 / 0); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgb(46 204 113 / 0.6); }
+  50% { opacity: 0.85; box-shadow: 0 0 0 6px rgb(46 204 113 / 0); }
 }
 
 .pulse-glow {
@@ -28,11 +185,51 @@ body {
 }
 
 @keyframes block-tick {
-  0%, 72%, 100% { color: #a1a1aa; }
-  80% { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
-  88% { color: #a1a1aa; }
+  0%, 72%, 100% { color: var(--brand-navy-tint); }
+  80% { color: var(--severity-low); text-shadow: 0 0 8px rgba(46, 204, 113, 0.4); }
+  88% { color: var(--brand-navy-tint); }
 }
 
 .block-number-live {
   animation: block-tick 6s ease-in-out infinite;
+}
+
+/* --- severity rail (small dot row that mirrors the logo) --- */
+.severity-rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.severity-rail span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+/* --- severity badges --- */
+.sev-low {
+  background: var(--sev-low-bg);
+  color: var(--sev-low-text);
+  border-color: var(--sev-low-border);
+}
+.sev-medium {
+  background: var(--sev-medium-bg);
+  color: var(--sev-medium-text);
+  border-color: var(--sev-medium-border);
+}
+.sev-high {
+  background: var(--sev-high-bg);
+  color: var(--sev-high-text);
+  border-color: var(--sev-high-border);
+}
+.sev-critical {
+  background: var(--sev-critical-bg);
+  color: var(--sev-critical-text);
+  border-color: var(--sev-critical-border);
+}
+
+/* --- selection --- */
+::selection {
+  background: rgba(26, 35, 72, 0.2);
+  color: var(--brand-navy);
 }

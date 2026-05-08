@@ -43,13 +43,13 @@ export function relativeTime(isoTimestamp: string): string {
 export function severityClasses(s: AlertSeverity): string {
   switch (s) {
     case "LOW":
-      return "bg-zinc-800 text-zinc-300 border-zinc-700";
+      return "sev-low";
     case "MEDIUM":
-      return "bg-amber-950 text-amber-300 border-amber-800";
+      return "sev-medium";
     case "HIGH":
-      return "bg-orange-950 text-orange-300 border-orange-700";
+      return "sev-high";
     case "CRITICAL":
-      return "bg-red-950 text-red-300 border-red-700";
+      return "sev-critical";
   }
 }
 

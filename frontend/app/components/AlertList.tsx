@@ -57,7 +57,7 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
   const unverified = isUnverifiedRawData(alert.rawData) ? alert.rawData : null;
 
   return (
-    <li className="group rounded-lg border border-zinc-800 bg-zinc-900/40 p-5 transition hover:border-zinc-700 hover:bg-zinc-900/70">
+    <li className="card group rounded-lg p-5">
       <div className="flex items-start gap-4">
         <span
           className={`inline-flex shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${severityClasses(
@@ -69,28 +69,29 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="truncate text-sm font-semibold text-zinc-100">{alert.message}</h3>
+            <h3 className="text-brand truncate text-sm font-semibold">{alert.message}</h3>
             <div className="flex shrink-0 items-center gap-2">
               <button
                 onClick={onAskAI}
-                className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-xs text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-800"
+                className="btn-brand inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs"
               >
+                <span aria-hidden="true">✦</span>
                 Ask AI
               </button>
               <button
                 disabled
-                className="inline-flex cursor-not-allowed items-center gap-1 rounded border border-zinc-800 px-2 py-0.5 text-xs text-zinc-600 opacity-50"
+                className="btn-brand-ghost inline-flex cursor-not-allowed items-center gap-1 rounded px-2 py-0.5 text-xs opacity-50"
                 title="Swarm integration coming soon"
               >
-                Swarm <span className="text-zinc-700">↗</span>
+                Swarm <span>↗</span>
               </button>
-              <time className="text-xs text-zinc-500">{relativeTime(alert.timestamp)}</time>
+              <time className="text-brand-soft text-xs">{relativeTime(alert.timestamp)}</time>
             </div>
           </div>
 
           {fullPipeline?.natSpec?.title && (
-            <p className="mt-1 text-xs text-zinc-500">
-              <span className="font-mono text-zinc-400">{fullPipeline.natSpec.title}</span>
+            <p className="text-brand-soft mt-1 text-xs">
+              <span className="font-mono text-brand">{fullPipeline.natSpec.title}</span>
               {fullPipeline.natSpec.notice && <span> — {fullPipeline.natSpec.notice}</span>}
             </p>
           )}
@@ -125,41 +126,41 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-500">
+          <div className="text-brand-soft mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
             <span className="inline-flex items-center gap-0.5">
               <a
                 href={basescanAddressUrl(alert.proxyAddress)}
                 target="_blank"
                 rel="noreferrer"
-                className="font-mono hover:text-zinc-300 transition-colors"
+                className="font-mono transition-colors hover:text-brand"
               >
                 proxy {truncateAddress(alert.proxyAddress)}
               </a>
               <CopyButton text={alert.proxyAddress} />
             </span>
 
-            <span className="text-zinc-700">→</span>
+            <span className="text-brand-soft">→</span>
 
             <span className="inline-flex items-center gap-0.5">
               <a
                 href={basescanAddressUrl(alert.implementationAddress)}
                 target="_blank"
                 rel="noreferrer"
-                className="font-mono hover:text-zinc-300 transition-colors"
+                className="font-mono transition-colors hover:text-brand"
               >
                 impl {truncateAddress(alert.implementationAddress)}
               </a>
               <CopyButton text={alert.implementationAddress} />
             </span>
 
-            <span className="text-zinc-700">·</span>
+            <span className="text-brand-soft">·</span>
 
             <span className="inline-flex items-center gap-0.5">
               <a
                 href={basescanTxUrl(alert.txHash)}
                 target="_blank"
                 rel="noreferrer"
-                className="font-mono hover:text-zinc-300 transition-colors"
+                className="font-mono transition-colors hover:text-brand"
               >
                 tx {truncateHash(alert.txHash)}
               </a>
@@ -168,13 +169,13 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
 
             {typeof alert.blockNumber === "number" && (
               <>
-                <span className="text-zinc-700">·</span>
+                <span className="text-brand-soft">·</span>
                 <span className="font-mono">block {alert.blockNumber.toLocaleString()}</span>
               </>
             )}
             {fullPipeline?.contractMeta?.compilerVersion && (
               <>
-                <span className="text-zinc-700">·</span>
+                <span className="text-brand-soft">·</span>
                 <span className="font-mono">
                   {fullPipeline.contractMeta.compilerVersion.split("+")[0]}
                 </span>
@@ -210,21 +211,21 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
 
           {alert.analysis && (
             <details className="mt-3">
-              <summary className="cursor-pointer text-xs text-zinc-500 transition hover:text-zinc-300">
+              <summary className="text-brand-soft cursor-pointer text-xs transition hover:text-brand">
                 AI assessment ·{" "}
                 <span className="font-mono">{alert.analysis.confidence} confidence</span>
               </summary>
-              <div className="mt-2 space-y-2 rounded-md border border-zinc-800 bg-zinc-950/50 p-3 text-xs leading-relaxed text-zinc-400">
+              <div className="brand-border mt-2 space-y-2 rounded-md border bg-white/60 p-3 text-xs leading-relaxed text-brand">
                 <p>
-                  <span className="text-zinc-200">Summary. </span>
+                  <span className="font-semibold">Summary. </span>
                   {alert.analysis.summary}
                 </p>
                 <p>
-                  <span className="text-zinc-200">Explanation. </span>
+                  <span className="font-semibold">Explanation. </span>
                   {alert.analysis.explanation}
                 </p>
                 <p>
-                  <span className="text-zinc-200">Recommendation. </span>
+                  <span className="font-semibold">Recommendation. </span>
                   {alert.analysis.recommendation}
                 </p>
               </div>
@@ -238,26 +239,27 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
 
 function RiskFlagRow({ flag }: { flag: RiskFlag }) {
   const dotColor: Record<RiskLevel, string> = {
-    CRITICAL: "bg-red-500",
-    HIGH: "bg-orange-500",
-    MEDIUM: "bg-amber-500",
+    CRITICAL: "var(--severity-critical)",
+    HIGH: "var(--severity-high)",
+    MEDIUM: "var(--severity-medium)",
   };
-  const textColor: Record<RiskLevel, string> = {
-    CRITICAL: "text-red-300",
-    HIGH: "text-orange-300",
-    MEDIUM: "text-amber-300",
+  const tagClass: Record<RiskLevel, string> = {
+    CRITICAL: "sev-critical",
+    HIGH: "sev-high",
+    MEDIUM: "sev-medium",
   };
   return (
-    <div className="flex items-start gap-2 rounded-md border border-zinc-800 bg-zinc-950/40 px-3 py-1.5 text-xs">
+    <div className="brand-border flex items-start gap-2 rounded-md border bg-white/50 px-3 py-1.5 text-xs">
       <span
-        className={`mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${dotColor[flag.level]}`}
+        className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ background: dotColor[flag.level] }}
       />
       <span
-        className={`font-mono text-[10px] uppercase tracking-wider shrink-0 ${textColor[flag.level]}`}
+        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider ${tagClass[flag.level]} border`}
       >
         {flag.level}
       </span>
-      <span className="text-zinc-300">{flag.message}</span>
+      <span className="text-brand">{flag.message}</span>
     </div>
   );
 }
@@ -265,23 +267,23 @@ function RiskFlagRow({ flag }: { flag: RiskFlag }) {
 function SimilarContractsSection({ contracts }: { contracts: SimilarContract[] }) {
   return (
     <details className="mt-3">
-      <summary className="cursor-pointer text-xs text-zinc-500 transition hover:text-zinc-300">
+      <summary className="text-brand-soft cursor-pointer text-xs transition hover:text-brand">
         Similar contracts ({contracts.length}) — Sourcify bytecode similarity
       </summary>
-      <div className="mt-2 rounded-md border border-zinc-800 bg-zinc-950/50 p-3">
-        <ul className="space-y-1 text-xs font-mono text-zinc-400">
+      <div className="brand-border mt-2 rounded-md border bg-white/60 p-3">
+        <ul className="text-brand space-y-1 text-xs font-mono">
           {contracts.map((c) => {
             const high = c.similarity >= 0.9;
             return (
               <li key={c.address} className="flex items-center gap-3">
                 <span
-                  className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${
-                    high ? "bg-red-950/60 text-red-300" : "bg-zinc-800 text-zinc-300"
+                  className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] border ${
+                    high ? "sev-critical" : "sev-low"
                   }`}
                 >
                   {c.similarity.toFixed(2)}
                 </span>
-                <span className="text-zinc-500">{chainName(c.chainId)}</span>
+                <span className="text-brand-soft">{chainName(c.chainId)}</span>
                 <span>{truncateAddress(c.address)}</span>
               </li>
             );
@@ -299,14 +301,19 @@ function StorageDiffSection({
 }) {
   return (
     <details className="mt-3">
-      <summary className="cursor-pointer text-xs text-zinc-500 transition hover:text-zinc-300">
+      <summary className="text-brand-soft cursor-pointer text-xs transition hover:text-brand">
         Storage diff
       </summary>
-      <div className="mt-2 space-y-2 rounded-md border border-zinc-800 bg-zinc-950/50 p-3 text-xs">
+      <div className="brand-border mt-2 space-y-2 rounded-md border bg-white/60 p-3 text-xs">
         {diff.movedVariables.length > 0 && (
           <div>
-            <div className="mb-1 text-red-300">moved ({diff.movedVariables.length})</div>
-            <ul className="space-y-0.5 font-mono text-zinc-400">
+            <div
+              className="mb-1 font-semibold"
+              style={{ color: "var(--severity-critical)" }}
+            >
+              moved ({diff.movedVariables.length})
+            </div>
+            <ul className="text-brand space-y-0.5 font-mono">
               {diff.movedVariables.map((v) => (
                 <li key={v.label}>
                   {v.label}: slot {v.oldSlot}+{v.oldOffset} → slot {v.newSlot}+{v.newOffset}
@@ -317,8 +324,13 @@ function StorageDiffSection({
         )}
         {diff.removedVariables.length > 0 && (
           <div>
-            <div className="mb-1 text-amber-300">removed ({diff.removedVariables.length})</div>
-            <ul className="space-y-0.5 font-mono text-zinc-400">
+            <div
+              className="mb-1 font-semibold"
+              style={{ color: "var(--severity-high)" }}
+            >
+              removed ({diff.removedVariables.length})
+            </div>
+            <ul className="text-brand space-y-0.5 font-mono">
               {diff.removedVariables.map((v) => (
                 <li key={v.label}>
                   {v.label} (slot {v.slot}, type {v.type})
@@ -329,8 +341,13 @@ function StorageDiffSection({
         )}
         {diff.addedVariables.length > 0 && (
           <div>
-            <div className="mb-1 text-zinc-300">added ({diff.addedVariables.length})</div>
-            <ul className="space-y-0.5 font-mono text-zinc-400">
+            <div
+              className="mb-1 font-semibold"
+              style={{ color: "var(--severity-low)" }}
+            >
+              added ({diff.addedVariables.length})
+            </div>
+            <ul className="text-brand space-y-0.5 font-mono">
               {diff.addedVariables.map((v) => (
                 <li key={v.label}>
                   {v.label} (slot {v.slot}, type {v.type})
@@ -347,14 +364,19 @@ function StorageDiffSection({
 function ABIDiffSection({ diff }: { diff: NonNullable<FullPipelineRawData["abiDiff"]> }) {
   return (
     <details className="mt-3">
-      <summary className="cursor-pointer text-xs text-zinc-500 transition hover:text-zinc-300">
+      <summary className="text-brand-soft cursor-pointer text-xs transition hover:text-brand">
         ABI diff
       </summary>
-      <div className="mt-2 space-y-2 rounded-md border border-zinc-800 bg-zinc-950/50 p-3 text-xs">
+      <div className="brand-border mt-2 space-y-2 rounded-md border bg-white/60 p-3 text-xs">
         {diff.removedFunctions.length > 0 && (
           <div>
-            <div className="mb-1 text-amber-300">removed ({diff.removedFunctions.length})</div>
-            <ul className="space-y-0.5 font-mono text-zinc-400">
+            <div
+              className="mb-1 font-semibold"
+              style={{ color: "var(--severity-high)" }}
+            >
+              removed ({diff.removedFunctions.length})
+            </div>
+            <ul className="text-brand space-y-0.5 font-mono">
               {diff.removedFunctions.map((f, i) => (
                 <li key={`r-${i}`}>− {abiSignature(f)}</li>
               ))}
@@ -363,8 +385,13 @@ function ABIDiffSection({ diff }: { diff: NonNullable<FullPipelineRawData["abiDi
         )}
         {diff.addedFunctions.length > 0 && (
           <div>
-            <div className="mb-1 text-zinc-300">added ({diff.addedFunctions.length})</div>
-            <ul className="space-y-0.5 font-mono text-zinc-400">
+            <div
+              className="mb-1 font-semibold"
+              style={{ color: "var(--severity-low)" }}
+            >
+              added ({diff.addedFunctions.length})
+            </div>
+            <ul className="text-brand space-y-0.5 font-mono">
               {diff.addedFunctions.map((f, i) => (
                 <li key={`a-${i}`}>+ {abiSignature(f)}</li>
               ))}
@@ -373,8 +400,13 @@ function ABIDiffSection({ diff }: { diff: NonNullable<FullPipelineRawData["abiDi
         )}
         {diff.modifiedFunctions.length > 0 && (
           <div>
-            <div className="mb-1 text-amber-300">modified ({diff.modifiedFunctions.length})</div>
-            <ul className="space-y-0.5 font-mono text-zinc-400">
+            <div
+              className="mb-1 font-semibold"
+              style={{ color: "var(--severity-medium)" }}
+            >
+              modified ({diff.modifiedFunctions.length})
+            </div>
+            <ul className="text-brand space-y-0.5 font-mono">
               {diff.modifiedFunctions.map((m: ModifiedFunction, i: number) => (
                 <li key={`m-${i}`}>
                   {m.name}: {abiSignature(m.old)} → {abiSignature(m.new)}
@@ -397,10 +429,10 @@ function Tag({
 }) {
   const classes =
     tone === "critical"
-      ? "bg-red-950/60 text-red-300 border-red-900"
+      ? "sev-critical"
       : tone === "warn"
-        ? "bg-amber-950/60 text-amber-300 border-amber-900"
-        : "bg-zinc-800/60 text-zinc-300 border-zinc-700";
+        ? "sev-medium"
+        : "border-[var(--brand-navy)]/15 bg-white/70 text-brand";
   return (
     <span
       className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${classes}`}

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { loadAlerts } from "@/lib/load-alerts";
 import { type Alert } from "@/lib/types";
 import { relativeTime } from "@/lib/format";
@@ -53,33 +54,40 @@ export default async function Home() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur sticky top-0 z-10">
+      <header className="brand-border surface-1/90 sticky top-0 z-10 border-b backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-zinc-950 font-bold">
-              V
-            </div>
-            <div>
-              <h1 className="font-semibold tracking-tight text-zinc-50">Vigil</h1>
-              <p className="text-xs text-zinc-500">Vigil never sleeps</p>
-            </div>
+            <Image
+              src="/vigil-logo.png"
+              alt="Vigil"
+              width={64}
+              height={64}
+              className="h-11 w-11 object-contain"
+              priority
+            />
+            <p className="font-display hidden text-xs italic tracking-wide text-brand-soft sm:block">
+              Vigil never sleeps
+            </p>
           </div>
 
           <div className="flex items-center gap-3 text-xs">
-            <div className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/50 px-3 py-1.5">
-              <span className="text-zinc-500">{source === "live" ? "live" : "mock"}</span>
-              <span className="text-zinc-700">·</span>
+            <div className="brand-border flex items-center gap-2 rounded-full border bg-white/60 px-3 py-1.5">
+              <span className="text-brand-soft uppercase tracking-wider text-[10px]">
+                {source === "live" ? "live" : "mock"}
+              </span>
               <span
                 className={`pulse-glow inline-block h-2 w-2 shrink-0 rounded-full ${
-                  source === "live" ? "bg-green-500" : "bg-amber-500"
+                  source === "live"
+                    ? "bg-[var(--severity-low)]"
+                    : "bg-[var(--severity-medium)]"
                 }`}
               />
-              <span className="text-zinc-300">
-                Watching <span className="font-medium text-zinc-100">Base</span>
+              <span className="text-brand">
+                Watching <span className="font-semibold">Base</span>
               </span>
               {latestBlock !== null && (
                 <>
-                  <span className="text-zinc-700">·</span>
+                  <span className="text-brand-soft">·</span>
                   <span className="font-mono block-number-live">
                     block {latestBlock.toLocaleString()}
                   </span>
@@ -87,8 +95,8 @@ export default async function Home() {
               )}
               {source === "live" && updatedAt && (
                 <>
-                  <span className="text-zinc-700">·</span>
-                  <span className="font-mono text-zinc-500">
+                  <span className="text-brand-soft">·</span>
+                  <span className="font-mono text-brand-soft">
                     updated {relativeTime(updatedAt)}
                   </span>
                 </>
@@ -101,11 +109,23 @@ export default async function Home() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         <div className="mb-6 flex items-end justify-between">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Alerts</h2>
-            <p className="mt-1 text-sm text-zinc-400">
+            <div className="flex items-center gap-3">
+              <h2 className="font-display text-3xl font-bold tracking-tight text-brand">
+                Alerts
+              </h2>
+              <span className="severity-rail" aria-hidden="true">
+                <span style={{ background: "var(--severity-low)" }} />
+                <span style={{ background: "var(--severity-medium)" }} />
+                <span style={{ background: "var(--severity-high)" }} />
+                <span style={{ background: "var(--severity-critical)" }} />
+              </span>
+            </div>
+            <p className="text-brand-soft mt-1 text-sm">
               {alerts.length} upgrade{alerts.length === 1 ? "" : "s"} detected on Base
               {source === "mock" && (
-                <span className="ml-2 rounded-md bg-amber-950/60 px-2 py-0.5 text-xs text-amber-300 border border-amber-900">
+                <span
+                  className="sev-medium ml-2 rounded-md border px-2 py-0.5 text-xs"
+                >
                   showing mock data — agent hasn&apos;t emitted yet
                 </span>
               )}
@@ -115,8 +135,8 @@ export default async function Home() {
 
         <div className="mb-5 grid grid-cols-3 gap-3">
           <StatCard label="Total Upgrades Detected" value={totalUpgrades} />
-          <StatCard label="Critical Alerts" value={criticalAlerts} accent="red" />
-          <StatCard label="Unverified Contracts" value={unverifiedContracts} accent="amber" />
+          <StatCard label="Critical Alerts" value={criticalAlerts} accent="critical" />
+          <StatCard label="Unverified Contracts" value={unverifiedContracts} accent="high" />
         </div>
 
         <div className="mb-6">
@@ -125,8 +145,8 @@ export default async function Home() {
 
         <AlertList alerts={alerts} />
 
-        <footer className="mt-12 flex items-center justify-between border-t border-zinc-900 pt-6 text-xs text-zinc-600">
-          <span>Built for ETHPrague 2026</span>
+        <footer className="brand-border-soft mt-12 flex items-center justify-between border-t pt-6 text-xs text-brand-soft">
+          <span className="font-display italic">Built for ETHPrague 2026</span>
           <span className="font-mono">vigil-agent.eth</span>
         </footer>
       </main>
@@ -141,36 +161,36 @@ function StatCard({
 }: {
   label: string;
   value: number;
-  accent?: "red" | "amber";
+  accent?: "critical" | "high";
 }) {
   const numberColor =
-    accent === "red"
-      ? "text-red-400"
-      : accent === "amber"
-        ? "text-amber-400"
-        : "text-zinc-100";
-  const topLine =
-    accent === "red"
-      ? "bg-red-500/25"
-      : accent === "amber"
-        ? "bg-amber-500/25"
-        : "bg-zinc-700/40";
-  const borderColor =
-    accent === "red"
-      ? "border-zinc-800 hover:border-red-900/60"
-      : accent === "amber"
-        ? "border-zinc-800 hover:border-amber-900/60"
-        : "border-zinc-800";
+    accent === "critical"
+      ? "text-[var(--severity-critical)]"
+      : accent === "high"
+        ? "text-[var(--severity-high)]"
+        : "text-brand";
+
+  const topLineColor =
+    accent === "critical"
+      ? "var(--severity-critical)"
+      : accent === "high"
+        ? "var(--severity-high)"
+        : "var(--brand-navy)";
 
   return (
-    <div
-      className={`relative overflow-hidden rounded-lg border ${borderColor} bg-zinc-900/40 px-5 py-4 transition-colors`}
-    >
-      <div className={`absolute inset-x-0 top-0 h-px ${topLine}`} />
-      <div className={`font-mono text-3xl font-bold tabular-nums leading-none ${numberColor}`}>
+    <div className="card group relative overflow-hidden rounded-lg px-5 py-4">
+      <div
+        className="absolute inset-x-0 top-0 h-[2px] opacity-70 transition-opacity group-hover:opacity-100"
+        style={{ background: topLineColor }}
+      />
+      <div
+        className={`font-display text-3xl font-bold tabular-nums leading-none ${numberColor}`}
+      >
         {value}
       </div>
-      <div className="mt-2 text-xs leading-tight text-zinc-500">{label}</div>
+      <div className="text-brand-soft mt-2 text-xs uppercase tracking-wider">
+        {label}
+      </div>
     </div>
   );
 }

@@ -10,10 +10,12 @@ export type ChartBucket = {
 
 type EnrichedBucket = ChartBucket & { fill: string };
 
+// Severity-tinted bar palette mirroring the logo's traffic-light dots.
 function bucketColor(count: number): string {
-  if (count === 0) return "#27272a";
-  if (count >= 2) return "#f87171";
-  return "#22c55e";
+  if (count === 0) return "rgba(26, 35, 72, 0.10)"; // empty: faint navy on cream
+  if (count >= 3) return "#e74c3c"; // critical-red
+  if (count === 2) return "#f39c12"; // high-orange
+  return "#2ecc71"; // low-green for a single event
 }
 
 export function UpgradesChart({ data }: { data: ChartBucket[] }) {
@@ -29,18 +31,27 @@ export function UpgradesChart({ data }: { data: ChartBucket[] }) {
   }));
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-5 pt-5 pb-3">
+    <div className="card rounded-lg px-5 pb-3 pt-5">
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h3 className="text-sm font-medium text-zinc-300">Upgrades over time</h3>
-          <p className="mt-0.5 text-xs text-zinc-600">Last 24 hours · hourly buckets</p>
+          <h3 className="font-display text-sm font-semibold text-brand">
+            Upgrades over time
+          </h3>
+          <p className="text-brand-soft mt-0.5 text-xs">
+            Last 24 hours · hourly buckets
+          </p>
         </div>
         <div className="text-right">
-          <span className="font-mono text-xs text-zinc-500">
+          <span className="text-brand-soft font-mono text-xs">
             {total} event{total === 1 ? "" : "s"}
           </span>
           {peak >= 2 && (
-            <span className="ml-2 font-mono text-xs text-red-400">peak {peak}</span>
+            <span
+              className="ml-2 font-mono text-xs font-semibold"
+              style={{ color: "var(--severity-critical)" }}
+            >
+              peak {peak}
+            </span>
           )}
         </div>
       </div>
@@ -56,7 +67,7 @@ export function UpgradesChart({ data }: { data: ChartBucket[] }) {
               dataKey="label"
               tick={{
                 fontSize: 9,
-                fill: "#52525b",
+                fill: "rgba(26, 35, 72, 0.55)",
                 fontFamily: "var(--font-geist-mono, ui-monospace, monospace)",
               }}
               axisLine={false}
@@ -65,23 +76,35 @@ export function UpgradesChart({ data }: { data: ChartBucket[] }) {
             />
             <Tooltip
               contentStyle={{
-                background: "#18181b",
-                border: "1px solid #3f3f46",
-                borderRadius: 6,
+                background: "#ffffff",
+                border: "1px solid rgba(26, 35, 72, 0.15)",
+                borderRadius: 8,
                 padding: "6px 10px",
                 fontSize: 12,
-                color: "#fafafa",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+                color: "#1a2348",
+                boxShadow: "0 8px 24px rgba(26, 35, 72, 0.12)",
               }}
-              cursor={{ fill: "rgba(255,255,255,0.03)" }}
+              cursor={{ fill: "rgba(26, 35, 72, 0.05)" }}
               formatter={(v) => {
                 const n = Number(v ?? 0);
-                return [`${n} upgrade${n === 1 ? "" : "s"}`, ""] as [string, string];
+                return [`${n} upgrade${n === 1 ? "" : "s"}`, ""] as [
+                  string,
+                  string,
+                ];
               }}
-              labelStyle={{ color: "#71717a", fontSize: 10, marginBottom: 2 }}
+              labelStyle={{
+                color: "rgba(26, 35, 72, 0.6)",
+                fontSize: 10,
+                marginBottom: 2,
+              }}
               separator=""
             />
-            <Bar dataKey="count" radius={[2, 2, 0, 0]} maxBarSize={16} minPointSize={3} />
+            <Bar
+              dataKey="count"
+              radius={[3, 3, 0, 0]}
+              maxBarSize={16}
+              minPointSize={3}
+            />
           </BarChart>
         </ResponsiveContainer>
       ) : (
