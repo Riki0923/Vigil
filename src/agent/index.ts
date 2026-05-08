@@ -12,7 +12,8 @@ import {
 } from "../sourcify/index.js";
 import { diffStorageLayouts, assessRisk } from "../sourcify/diffStorage.js";
 import { diffABIs, assessFunctionRisk, type ABIItem } from "../sourcify/diffFunctions.js";
-import { createAlert, logAlert, AlertSeverity } from "../alerts/index.js";
+import { createAlert, AlertSeverity } from "../alerts/index.js";
+import { emitAlert } from "../delivery/emit.js";
 import { analyseUpgrade } from "./analyser.js";
 
 dotenv.config();
@@ -82,7 +83,7 @@ export async function processUpgrade(
       console.log(`[Pipeline] No similar contracts found`);
     }
 
-    logAlert(createAlert({
+    await emitAlert(createAlert({
       severity: AlertSeverity.CRITICAL,
       proxyAddress,
       implementationAddress: newImplAddress,
@@ -167,7 +168,7 @@ export async function processUpgrade(
     natSpec,
   });
 
-  logAlert(createAlert({
+  await emitAlert(createAlert({
     severity,
     proxyAddress,
     implementationAddress: newImplAddress,
