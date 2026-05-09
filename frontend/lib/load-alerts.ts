@@ -127,7 +127,7 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
   deduped.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   const latestUpdated = [
-    swarmLatest ? new Date().toISOString() : undefined,
+    swarmLatest?.timestamp,
     main?.updatedAt,
     sepolia?.updatedAt,
   ]
