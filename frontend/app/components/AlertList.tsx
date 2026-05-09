@@ -20,11 +20,11 @@ import {
   basescanAddressUrl,
   basescanTxUrl,
   chainName,
-  relativeTime,
   severityClasses,
   truncateAddress,
   truncateHash,
 } from "@/lib/format";
+import { TimeAgo } from "./TimeAgo";
 import { demoProxyForChain } from "@/lib/wallet";
 import { CopyButton } from "./CopyButton";
 import { ChatPanel } from "./ChatPanel";
@@ -113,7 +113,7 @@ function AlertCard({
               >
                 Swarm <span>↗</span>
               </button>
-              <time className="text-brand-soft text-xs">{relativeTime(alert.timestamp)}</time>
+              <time className="text-brand-soft text-xs"><TimeAgo iso={alert.timestamp} /></time>
             </div>
           </div>
 
@@ -510,7 +510,7 @@ function EnsReputationPanel({ reputation }: { reputation: TargetReputation }) {
         )}
         {reputation.lastUpgradeAt && (
           <KV label="vigil.last-upgrade-at">
-            <span className="font-mono">{relativeTime(reputation.lastUpgradeAt)}</span>
+            <span className="font-mono"><TimeAgo iso={reputation.lastUpgradeAt} /></span>
           </KV>
         )}
         {reputation.lastTx && (

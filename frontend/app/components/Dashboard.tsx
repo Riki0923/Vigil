@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useMemo } from "react";
 import type { Alert } from "@/lib/types";
 import type { AgentIdentity, TargetReputation } from "@/lib/ens";
-import { relativeTime } from "@/lib/format";
+import { TimeAgo } from "./TimeAgo";
 import { SUPPORTED_CHAINS } from "@/lib/wallet";
 import { AlertList } from "./AlertList";
 import { AgentIdentityCard } from "./AgentIdentityCard";
@@ -121,7 +121,7 @@ export function Dashboard({
                   <>
                     <span className="text-brand-soft">·</span>
                     <span className="font-mono text-brand-soft">
-                      updated {relativeTime(updatedAt)}
+                      updated <TimeAgo iso={updatedAt} />
                     </span>
                   </>
                 )}

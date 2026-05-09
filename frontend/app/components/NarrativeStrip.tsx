@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Alert } from "@/lib/types";
 import type { AgentIdentity } from "@/lib/ens";
-import { relativeTime } from "@/lib/format";
+import { TimeAgo } from "./TimeAgo";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -81,7 +81,7 @@ export function NarrativeStrip({
               </div>
               <div className="text-brand-soft mt-0.5 truncate text-xs">
                 {summarizeAlert(stats.mostRecent)} ·{" "}
-                {relativeTime(stats.mostRecent.timestamp)}
+                <TimeAgo iso={stats.mostRecent.timestamp} />
               </div>
             </>
           ) : (
