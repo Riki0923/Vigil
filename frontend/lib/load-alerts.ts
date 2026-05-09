@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Alert } from "./types";
 import { mockAlerts } from "./mock-alerts";
+import { seedAlertsBaseSepolia, seedAlertsBaseSepoliaUpdatedAt } from "./seed-alerts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "../..");
@@ -40,10 +41,16 @@ async function readAlertsFile(filePath: string, defaultChainId: number): Promise
 }
 
 export async function loadAlerts(): Promise<LoadAlertsResult> {
-  const [main, sepolia] = await Promise.all([
+  const [main, sepoliaFile] = await Promise.all([
     readAlertsFile(ALERTS_FILE, BASE_CHAIN_ID),
     readAlertsFile(ALERTS_SEPOLIA_FILE, BASE_SEPOLIA_CHAIN_ID),
   ]);
+
+  const sepolia =
+    sepoliaFile ?? {
+      alerts: seedAlertsBaseSepolia,
+      updatedAt: seedAlertsBaseSepoliaUpdatedAt,
+    };
 
   const merged: Alert[] = [];
   if (main) merged.push(...main.alerts);
