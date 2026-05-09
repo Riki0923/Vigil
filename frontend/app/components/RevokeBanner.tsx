@@ -4,6 +4,7 @@ import { useState } from "react";
 import { erc20Abi, createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base, baseSepolia } from "viem/chains";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { hasActiveApproval, useDemoAllowance } from "@/lib/approvals";
 import {
   DEMO_SPENDER,
@@ -34,9 +35,17 @@ export function RevokeBanner({
   alertChainId: number | undefined;
 }) {
   const { viewChainId } = useViewChain();
+  const { address: connectedAddress, isConnected } = useAccount();
+  const { writeContractAsync } = useWriteContract();
 
   const targetChainId = alertChainId ?? SUPPORTED_CHAINS.base.id;
   const demoProxy = demoProxyForChain(targetChainId);
+  const wagmiPublicClient = usePublicClient({ chainId: targetChainId });
+
+  const usingExternalWallet = isConnected && Boolean(connectedAddress);
+  const ownerAddress: Address | undefined = usingExternalWallet
+    ? (connectedAddress as Address)
+    : (DEMO_WALLET as Address | undefined);
 
   const isDemoProxy =
     Boolean(demoProxy) && demoProxy!.toLowerCase() === proxyAddress.toLowerCase();
@@ -45,7 +54,7 @@ export function RevokeBanner({
   const allowanceQuery = useDemoAllowance(
     targetChainId,
     isDemoProxy && matchesViewChain ? (demoProxy as Address) : undefined,
-    DEMO_WALLET as Address | undefined,
+    ownerAddress,
     DEMO_SPENDER,
   );
 
@@ -75,43 +84,73 @@ export function RevokeBanner({
       targetChainId,
       proxy: demoProxy,
       spender: DEMO_SPENDER,
-      hasKey: Boolean(DEMO_WALLET_PRIVATE_KEY),
+      owner: ownerAddress,
+      usingExternalWallet,
       currentAllowance: allowance?.toString(),
     });
-    if (!DEMO_WALLET_PRIVATE_KEY) {
-      console.error("[RevokeBanner] missing NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY env var");
-      setOrchestrationError("NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY not set");
-      return;
-    }
-    const chain = chainForId(targetChainId);
-    if (!chain) {
-      console.error(`[RevokeBanner] unsupported chain id ${targetChainId}`);
-      setOrchestrationError(`Unsupported chain: ${targetChainId}`);
-      return;
-    }
     setOrchestrationError(null);
     setTxHash(undefined);
     setIsMined(false);
     setIsSending(true);
     try {
-      const account = privateKeyToAccount(DEMO_WALLET_PRIVATE_KEY);
-      console.log(`[RevokeBanner] signing as ${account.address} on ${chain.name}`);
-      const walletClient = createWalletClient({ account, chain, transport: http() });
-      const publicClient = createPublicClient({ chain, transport: http() });
-      const hash = await walletClient.writeContract({
-        address: demoProxy as Address,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [DEMO_SPENDER as Address, 0n],
-      });
-      console.log(`[RevokeBanner] tx submitted: ${hash}`);
-      setTxHash(hash);
-      setIsSending(false);
-      setIsMining(true);
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      console.log(
-        `[RevokeBanner] tx mined block=${receipt.blockNumber} status=${receipt.status}`,
-      );
+      let hash: `0x${string}`;
+
+      if (usingExternalWallet) {
+        // Sign with the user's connected wallet. wagmi handles the chain switch
+        // prompt if the connected wallet is on a different chain.
+        if (!wagmiPublicClient) {
+          throw new Error(`No public client available for chain ${targetChainId}`);
+        }
+        console.log(`[RevokeBanner] signing as connected ${connectedAddress}`);
+        hash = await writeContractAsync({
+          chainId: targetChainId,
+          address: demoProxy as Address,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [DEMO_SPENDER as Address, 0n],
+        });
+        console.log(`[RevokeBanner] tx submitted: ${hash}`);
+        setTxHash(hash);
+        setIsSending(false);
+        setIsMining(true);
+        const receipt = await wagmiPublicClient.waitForTransactionReceipt({ hash });
+        console.log(
+          `[RevokeBanner] tx mined block=${receipt.blockNumber} status=${receipt.status}`,
+        );
+      } else {
+        if (!DEMO_WALLET_PRIVATE_KEY) {
+          console.error("[RevokeBanner] missing NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY env var");
+          setOrchestrationError("NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY not set");
+          setIsSending(false);
+          return;
+        }
+        const chain = chainForId(targetChainId);
+        if (!chain) {
+          console.error(`[RevokeBanner] unsupported chain id ${targetChainId}`);
+          setOrchestrationError(`Unsupported chain: ${targetChainId}`);
+          setIsSending(false);
+          return;
+        }
+        const account = privateKeyToAccount(DEMO_WALLET_PRIVATE_KEY);
+        console.log(`[RevokeBanner] signing as demo ${account.address} on ${chain.name}`);
+        const walletClient = createWalletClient({ account, chain, transport: http() });
+        const publicClient = createPublicClient({ chain, transport: http() });
+        hash = await walletClient.writeContract({
+          address: demoProxy as Address,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [DEMO_SPENDER as Address, 0n],
+        });
+        console.log(`[RevokeBanner] tx submitted: ${hash}`);
+        setTxHash(hash);
+        setIsSending(false);
+        setIsMining(true);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        console.log(
+          `[RevokeBanner] tx mined block=${receipt.blockNumber} status=${receipt.status}`,
+        );
+      }
+
       setIsMining(false);
       setIsMined(true);
       void allowanceQuery.refetch();
