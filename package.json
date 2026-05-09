@@ -12,7 +12,8 @@
     "ens:check": "tsx scripts/ens/check-parent.ts",
     "ens:register": "tsx scripts/ens/register-parent.ts",
     "ens:seed": "tsx scripts/ens/seed-subnames.ts",
-    "ens:set-base-primary": "tsx scripts/ens/set-base-primary.ts"
+    "ens:set-base-primary": "tsx scripts/ens/set-base-primary.ts",
+    "ens:sync-feed": "tsx scripts/ens/sync-feed.ts"
   },
   "repository": {
     "type": "git",

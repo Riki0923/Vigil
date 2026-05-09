@@ -135,3 +135,11 @@ export function getManifestUrl(): string | null {
   if (!manifestReference) return null;
   return `${BZZ_LIMO}/bzz/${manifestReference}/`;
 }
+
+// Deterministic subscriber-facing feed URL derived from the loaded private key
+// and manifest topic. Stable across restarts when SWARM_PRIVATE_KEY is pinned.
+// Returns null if initSwarm() hasn't run yet.
+export function getCurrentFeedUrl(): string | null {
+  if (!privateKey || !manifestTopic || !ownerAddress) return null;
+  return `${BZZ_LIMO}/feeds/${ownerAddress}/${manifestTopic.toHex()}`;
+}
