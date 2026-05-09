@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { DEFAULT_VIEW_CHAIN_ID, SUPPORTED_CHAINS, type SupportedChainId } from "@/lib/wallet";
+import { DEFAULT_VIEW_CHAIN_ID, type SupportedChainId } from "@/lib/wallet";
 
 const STORAGE_KEY = "vigil:view-chain";
 
@@ -12,7 +12,10 @@ type ViewChainContextValue = {
 
 const ViewChainContext = createContext<ViewChainContextValue | null>(null);
 
-const VALID_IDS = new Set<number>(Object.values(SUPPORTED_CHAINS).map((c) => c.id));
+// Testnet is hidden from the UI, so only the default chain is a valid stored
+// view choice. Stale localStorage values (e.g. a user who previously picked
+// Base Sepolia) are ignored and fall back to DEFAULT_VIEW_CHAIN_ID.
+const VALID_IDS = new Set<number>([DEFAULT_VIEW_CHAIN_ID]);
 
 export function ViewChainProvider({ children }: { children: ReactNode }) {
   const [viewChainId, setViewChainIdState] = useState<SupportedChainId>(DEFAULT_VIEW_CHAIN_ID);

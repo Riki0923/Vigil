@@ -46,8 +46,6 @@ export function explorerTxUrl(chainId: number, txHash: string): string {
   return `${SUPPORTED_CHAINS.baseSepolia.explorerTxBase}${txHash}`;
 }
 
-// First-visit landing chain. Persisted choice in localStorage takes precedence
-// after the user picks. Sepolia is where the demo proxy + ENS subname records
-// live, so judges and first-time visitors land on the screen with the live alert
-// + reputation panel without having to click the chain switch.
-export const DEFAULT_VIEW_CHAIN_ID: SupportedChainId = baseSepolia.id;
+// First-visit landing chain. Sepolia/testnet is hidden from the UI for now —
+// only Base mainnet is selectable, so this is also the only valid view chain.
+export const DEFAULT_VIEW_CHAIN_ID: SupportedChainId = base.id;
