@@ -115,8 +115,8 @@ That's the whole product. The rest of this doc shows exactly how each piece fits
 ║  VIGIL.FEED      bzz.limo/feeds/0x4b29…/94f6a4… ↗            ║
 ║                  subscribers discover via ENS                 ║
 ║                                                               ║
-║  VIGIL.PAYMENT   x402:https://api.vigil.app/pay/per-alert    ║
-║                  X402 endpoint, discoverable via ENS          ║
+║  VIGIL.PAYMENT   x402-planned:github.com/Riki0923/Vigil      ║
+║                  X402 endpoint (roadmap), discoverable via ENS║
 ╚══════════════════════════════════════════════════════════════╝
 ```
 
@@ -209,7 +209,7 @@ sequenceDiagram
 | `agent.vigil.eth.vigil.capabilities` | us, once | Identity card chips |
 | `agent.vigil.eth.vigil.severity-min` | us, once (editable) | **Agent boot — gates every alert** |
 | `agent.vigil.eth.vigil.feed` | `npm run ens:sync-feed` | Subscribers + identity card row |
-| `agent.vigil.eth.vigil.payment` | us, once | Identity card row + future X402 callers |
+| `agent.vigil.eth.vigil.payment` | `npm run ens:seed` (stub `x402-planned:…` until real X402 endpoint lands) | Identity card row + future X402 callers |
 | `demo.vigil.eth.addr[base-sepolia]` | us, once | Agent + dashboard "no hardcoded address" |
 | `demo.vigil.eth.kind` | us, once | Reputation panel chip |
 | `demo.vigil.eth.vigil.last-severity` | **agent, after each alert** | Reputation panel "last X" chip |

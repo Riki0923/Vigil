@@ -147,6 +147,12 @@ async function main(): Promise<void> {
     }),
   );
   await setText(resolver, agentNode, RECORD_KEYS.severityMin, "MEDIUM");
+  await setText(
+    resolver,
+    agentNode,
+    RECORD_KEYS.payment,
+    "x402-planned:https://github.com/Riki0923/Vigil",
+  );
 
   // 2. demo subname + records
   const demoProxy = await readDemoProxy();
