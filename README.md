@@ -83,6 +83,14 @@ docs/                        development plan, pitch, swarm notes,
 - Vercel AI SDK (`ai`, `@ai-sdk/react`, `@ai-sdk/openai`) for streaming chat
 - Recharts for the 24-hour upgrade timeline
 
+## Sponsor Integrations
+
+- **Sourcify** — v2 API for contract verification, storage layout diffing, ABI comparison, NatSpec extraction, and bytecode similarity search across 27M+ verified contracts
+- **Apify** — autonomous social context enrichment via X402 micropayments on Base. When an upgrade fires, Vigil pays $1 USDC autonomously to scrape news context — no human in the loop
+- **Swarm** — permanent decentralised storage of every alert and block via Mantaray manifest, indexed by block number and accessible via bzz.limo. Permanent feed URL never changes
+- **ENS** — agent identity, capability discovery, and per-protocol reputation anchored to vigilbot.eth on Ethereum mainnet
+- **Telegram** — real-time alert delivery with AI summary, Swarm link, and Basescan link
+
 ## Running locally
 
 Backend:
