@@ -15,6 +15,7 @@ import { createAlert, AlertSeverity } from "../alerts/index.js";
 import { emitAlert } from "../delivery/emit.js";
 import { analyseUpgrade } from "./analyser.js";
 import { initSwarm, publishData } from "../swarm/index.js";
+import { sendTelegramAlert } from "../delivery/telegram.js";
 import {
   hasEnsWriter,
   hasSepoliaProvider,
@@ -247,7 +248,8 @@ export async function processUpgrade(
   });
 
 
-    await publishData(alert,block);
+    const swarmUrl = await publishData(alert, block);
+    await sendTelegramAlert(alert, swarmUrl ?? undefined);
 
 
   await emitAlert(alert, block.number);
