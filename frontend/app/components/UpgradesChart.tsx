@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 export type ChartBucket = {
@@ -18,9 +18,14 @@ function bucketColor(count: number): string {
   return "#2ecc71"; // low-green for a single event
 }
 
+// Recharts' ResponsiveContainer measures 0x0 during SSR. useSyncExternalStore
+// gates the chart on hydration without the setState-in-effect anti-pattern.
+const subscribeNoop = () => () => {};
+const isClientSnapshot = () => true;
+const isServerSnapshot = () => false;
+
 export function UpgradesChart({ data }: { data: ChartBucket[] }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(subscribeNoop, isClientSnapshot, isServerSnapshot);
 
   const total = data.reduce((s, d) => s + d.count, 0);
   const peak = Math.max(...data.map((d) => d.count), 0);

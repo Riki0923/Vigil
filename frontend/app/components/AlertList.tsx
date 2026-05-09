@@ -14,6 +14,8 @@ import {
   type RiskLevel,
   type SimilarContract,
 } from "@/lib/types";
+import type { TargetReputation } from "@/lib/ens";
+import { ENS_CONFIG } from "@/lib/ens";
 import {
   basescanAddressUrl,
   basescanTxUrl,
@@ -27,7 +29,13 @@ import { CopyButton } from "./CopyButton";
 import { ChatPanel } from "./ChatPanel";
 import { RevokeBanner } from "./RevokeBanner";
 
-export function AlertList({ alerts }: { alerts: Alert[] }) {
+export function AlertList({
+  alerts,
+  targetReputations = {},
+}: {
+  alerts: Alert[];
+  targetReputations?: Record<string, TargetReputation>;
+}) {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
   return (
@@ -37,6 +45,9 @@ export function AlertList({ alerts }: { alerts: Alert[] }) {
           <AlertCard
             key={alert.id}
             alert={alert}
+            reputation={
+              alert.proxyName ? targetReputations[alert.proxyName] ?? null : null
+            }
             onAskAI={() => setSelectedAlert(alert)}
           />
         ))}
@@ -53,7 +64,15 @@ export function AlertList({ alerts }: { alerts: Alert[] }) {
   );
 }
 
-function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
+function AlertCard({
+  alert,
+  reputation,
+  onAskAI,
+}: {
+  alert: Alert;
+  reputation: TargetReputation | null;
+  onAskAI: () => void;
+}) {
   const fullPipeline = isFullPipelineRawData(alert.rawData) ? alert.rawData : null;
   const unverified = isUnverifiedRawData(alert.rawData) ? alert.rawData : null;
 
@@ -135,7 +154,14 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
                 rel="noreferrer"
                 className="font-mono transition-colors hover:text-brand"
               >
-                proxy {truncateAddress(alert.proxyAddress)}
+                {alert.proxyName ? (
+                  <>
+                    <span className="text-brand">{alert.proxyName}</span>
+                    <span className="text-brand-soft"> ({truncateAddress(alert.proxyAddress)})</span>
+                  </>
+                ) : (
+                  <>proxy {truncateAddress(alert.proxyAddress)}</>
+                )}
               </a>
               <CopyButton text={alert.proxyAddress} />
             </span>
@@ -184,7 +210,13 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
             )}
           </div>
 
-          <RevokeBanner proxyAddress={alert.proxyAddress} alertChainId={alert.chainId} />
+          {reputation && <EnsReputationPanel reputation={reputation} />}
+
+          <RevokeBanner
+            proxyAddress={alert.proxyAddress}
+            alertChainId={alert.chainId}
+            ensProxyOverride={reputation?.baseSepoliaAddress ?? null}
+          />
 
           {fullPipeline?.functionRiskFlags && fullPipeline.functionRiskFlags.length > 0 && (
             <div className="mt-3 space-y-1">
@@ -420,6 +452,103 @@ function ABIDiffSection({ diff }: { diff: NonNullable<FullPipelineRawData["abiDi
         )}
       </div>
     </details>
+  );
+}
+
+function EnsReputationPanel({ reputation }: { reputation: TargetReputation }) {
+  const sevClass =
+    reputation.lastSeverity === "CRITICAL"
+      ? "sev-critical"
+      : reputation.lastSeverity === "HIGH"
+        ? "sev-high"
+        : reputation.lastSeverity === "MEDIUM"
+          ? "sev-medium"
+          : reputation.lastSeverity === "LOW"
+            ? "sev-low"
+            : "border-[var(--brand-navy)]/15 bg-white/70 text-brand";
+
+  const ensAppUrl = `${ENS_CONFIG.appUrlBase}/${reputation.name}?network=sepolia`;
+
+  return (
+    <details
+      open
+      className="mt-3 rounded-md border-l-2 border-l-[var(--brand-navy)] bg-white/70 px-3 py-2 text-xs shadow-sm"
+    >
+      <summary className="flex cursor-pointer flex-wrap items-center gap-2 transition-colors hover:text-brand list-none">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--severity-low)] pulse-glow" />
+          <span className="text-brand-soft uppercase tracking-wider text-[10px]">
+            ENS reputation
+          </span>
+        </span>
+        <span className="font-mono font-semibold text-brand">{reputation.name}</span>
+        {reputation.upgradeCount > 0 && (
+          <span className="brand-border-soft rounded border bg-white px-1.5 py-0.5 text-[10px] font-mono text-brand">
+            {reputation.upgradeCount} upgrade{reputation.upgradeCount === 1 ? "" : "s"} tracked
+          </span>
+        )}
+        {reputation.lastSeverity && (
+          <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-mono uppercase ${sevClass}`}>
+            last {reputation.lastSeverity}
+          </span>
+        )}
+        {reputation.kind && (
+          <span className="text-brand-soft text-[10px] font-mono">{reputation.kind}</span>
+        )}
+      </summary>
+
+      <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        {reputation.baseSepoliaAddress && (
+          <KV label="addr[base-sepolia]">
+            <span className="font-mono">{truncateAddress(reputation.baseSepoliaAddress)}</span>
+          </KV>
+        )}
+        {reputation.lastUpgradeAt && (
+          <KV label="vigil.last-upgrade-at">
+            <span className="font-mono">{relativeTime(reputation.lastUpgradeAt)}</span>
+          </KV>
+        )}
+        {reputation.lastTx && (
+          <KV label="vigil.last-tx">
+            <a
+              href={basescanTxUrl(reputation.lastTx)}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono transition-colors hover:text-brand hover:underline"
+            >
+              {truncateHash(reputation.lastTx)} ↗
+            </a>
+          </KV>
+        )}
+        {reputation.upgradeCount > 0 && (
+          <KV label="vigil.upgrade-count">
+            <span className="font-mono">{reputation.upgradeCount}</span>
+          </KV>
+        )}
+      </div>
+
+      <div className="mt-2 flex items-center gap-2 text-[10px] text-brand-soft">
+        <span>resolved live from Sepolia ENS · written back by the agent after each alert</span>
+        <span>·</span>
+        <a
+          href={ensAppUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="transition-colors hover:text-brand hover:underline"
+        >
+          view on ENS app ↗
+        </a>
+      </div>
+    </details>
+  );
+}
+
+function KV({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-brand-soft uppercase tracking-wider text-[10px] shrink-0">{label}</span>
+      <span className="text-brand">{children}</span>
+    </div>
   );
 }
 

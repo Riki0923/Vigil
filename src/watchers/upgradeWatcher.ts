@@ -13,12 +13,16 @@ export type UpgradeCallback = (
   proxyAddress: string,
   newImplAddress: string,
   oldImplAddress: string,
-  block: ethers.Block
+  block: ethers.Block,
+  proxyName: string | null
 ) => Promise<void>;
+
+export type NameResolver = (address: string) => string | null;
 
 export async function startUpgradeWatcher(
   provider: ethers.JsonRpcProvider,
-  onUpgrade: UpgradeCallback
+  onUpgrade: UpgradeCallback,
+  resolveName: NameResolver = () => null,
 ): Promise<void> {
   provider.on("block", async (blockNumber: number) => {
     try {
@@ -52,13 +56,18 @@ export async function startUpgradeWatcher(
         const raw = await provider.getStorage(proxyAddress, IMPL_SLOT, blockNumber - 1);
         const oldImplAddress = "0x" + raw.slice(-40);
 
+        const proxyName = resolveName(proxyAddress);
+
         console.log(`[UpgradeWatcher] Upgrade detected at block ${blockNumber}`);
+        if (proxyName) {
+          console.log(`  Name:            ${proxyName}`);
+        }
         console.log(`  Proxy:           ${proxyAddress}`);
         console.log(`  Old impl:        ${oldImplAddress}`);
         console.log(`  New impl:        ${newImplAddress}`);
         console.log(`  Tx:              ${txHash}`);
 
-        await onUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, block);
+        await onUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, block, proxyName);
       }
     } catch (err) {
       console.error(`[UpgradeWatcher] Error scanning block ${blockNumber}:`, err);

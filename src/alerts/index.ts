@@ -13,6 +13,7 @@ export interface Alert {
   timestamp: string;
   severity: AlertSeverity;
   proxyAddress: string;
+  proxyName?: string;
   implementationAddress: string;
   txHash: string;
   isVerified: boolean;
@@ -49,6 +50,9 @@ export function logAlert(alert: Alert): void {
   console.log(line);
   console.log(`  ID:         ${alert.id}`);
   console.log(`  Time:       ${alert.timestamp}`);
+  if (alert.proxyName) {
+    console.log(`  Name:       ${alert.proxyName}`);
+  }
   console.log(`  Proxy:      ${alert.proxyAddress}`);
   console.log(`  Impl:       ${alert.implementationAddress}`);
   console.log(`  Tx:         ${alert.txHash}`);

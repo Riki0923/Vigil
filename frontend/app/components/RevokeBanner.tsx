@@ -30,16 +30,21 @@ function chainForId(id: number) {
 export function RevokeBanner({
   proxyAddress,
   alertChainId,
+  ensProxyOverride,
 }: {
   proxyAddress: string;
   alertChainId: number | undefined;
+  // Address resolved live from `<name>.vigil.eth`'s ENSIP-11 addr[base-sepolia]
+  // record. When present this takes precedence over NEXT_PUBLIC_DEMO_PROXY_*
+  // env vars — proves no-hardcoded-values for the ENS bounty.
+  ensProxyOverride?: string | null;
 }) {
   const { viewChainId } = useViewChain();
   const { address: connectedAddress, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
 
   const targetChainId = alertChainId ?? SUPPORTED_CHAINS.base.id;
-  const demoProxy = demoProxyForChain(targetChainId);
+  const demoProxy = (ensProxyOverride as Address | null | undefined) ?? demoProxyForChain(targetChainId);
   const wagmiPublicClient = usePublicClient({ chainId: targetChainId });
 
   const usingExternalWallet = isConnected && Boolean(connectedAddress);

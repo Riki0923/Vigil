@@ -118,6 +118,7 @@ export type Alert = {
   timestamp: string;
   severity: AlertSeverity;
   proxyAddress: string;
+  proxyName?: string;
   implementationAddress: string;
   txHash: string;
   blockNumber?: number;

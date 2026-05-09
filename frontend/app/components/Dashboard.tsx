@@ -3,9 +3,11 @@
 import Image from "next/image";
 import { useMemo } from "react";
 import type { Alert } from "@/lib/types";
+import type { AgentIdentity, TargetReputation } from "@/lib/ens";
 import { relativeTime } from "@/lib/format";
 import { SUPPORTED_CHAINS } from "@/lib/wallet";
 import { AlertList } from "./AlertList";
+import { AgentIdentityCard } from "./AgentIdentityCard";
 import { UpgradesChart, type ChartBucket } from "./UpgradesChart";
 import { ConnectButton } from "./ConnectButton";
 import { ChainSelector } from "./ChainSelector";
@@ -48,10 +50,14 @@ export function Dashboard({
   allAlerts,
   source,
   updatedAt,
+  agentIdentity = null,
+  targetReputations = {},
 }: {
   allAlerts: Alert[];
   source: "live" | "mock";
   updatedAt?: string;
+  agentIdentity?: AgentIdentity | null;
+  targetReputations?: Record<string, TargetReputation>;
 }) {
   const { viewChainId } = useViewChain();
 
@@ -152,6 +158,8 @@ export function Dashboard({
             </div>
           </div>
 
+          <AgentIdentityCard identity={agentIdentity} />
+
           <div className="mb-5 grid grid-cols-3 gap-3">
             <StatCard label="Total Upgrades Detected" value={totalUpgrades} />
             <StatCard label="Critical Alerts" value={criticalAlerts} accent="critical" />
@@ -162,11 +170,11 @@ export function Dashboard({
             <UpgradesChart data={chartData} />
           </div>
 
-          <AlertList alerts={alerts} />
+          <AlertList alerts={alerts} targetReputations={targetReputations} />
 
           <footer className="brand-border-soft mt-12 flex items-center justify-between border-t pt-6 text-xs text-brand-soft">
             <span className="font-display italic">Built for ETHPrague 2026</span>
-            <span className="font-mono">vigil-agent.eth</span>
+            <span className="font-mono">agent.vigil.eth</span>
           </footer>
         </main>
     </div>
