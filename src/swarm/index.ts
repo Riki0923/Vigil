@@ -1,10 +1,8 @@
 import { Bee, Topic, PrivateKey, NULL_STAMP, MantarayNode } from "@ethersphere/bee-js";
 import { randomBytes } from "crypto";
-import * as fs from "fs";
 
 const BZZ_LIMO = "https://bzz.limo";
 const MANIFEST_TOPIC_NAME = "vigil-manifest";
-const STATE_FILE = ".swarm-manifest";
 
 let bee: Bee;
 let privateKey: PrivateKey;
@@ -12,6 +10,7 @@ let manifestTopic: Topic;
 
 let node: MantarayNode;
 let manifestReference: string | null = null;
+let feedManifestUrl: string | null = null;
 
 export async function initSwarm(): Promise<void> {
   bee = new Bee(BZZ_LIMO);
@@ -30,15 +29,24 @@ export async function initSwarm(): Promise<void> {
   }
 
   manifestTopic = Topic.fromString(MANIFEST_TOPIC_NAME);
-  if (fs.existsSync(STATE_FILE)) {
-    const state = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
-    console.log(`[Swarm] Loading existing manifest: ${state.reference}`);
-    node = await MantarayNode.unmarshal(bee, state.reference);
+
+  const feedWriter = bee.makeFeedWriter(manifestTopic, privateKey);
+  const feedManifest = await bee.createFeedManifest(NULL_STAMP, manifestTopic, feedWriter.owner);
+  feedManifestUrl = `${BZZ_LIMO}/bzz/${feedManifest.toHex()}/`;
+  console.log(`[Swarm] PERMANENT FEED URL: ${feedManifestUrl}`);
+
+  try {
+    const { reference } = await feedWriter.downloadReference();
+    node = await MantarayNode.unmarshal(bee, reference);
     await node.loadRecursively(bee);
-    manifestReference = state.reference;
-    console.log(`[Swarm] Loaded manifest with ${node.collect().length} entries`);
-  } else {
-    console.log(`[Swarm] No state file found — starting fresh`);
+    manifestReference = reference.toHex();
+    console.log(`[Swarm] Resumed existing manifest with ${node.collect().length} entries`);
+  } catch (err: any) {
+    if (err?.status === 404 || err?.message?.includes("404")) {
+      console.log(`[Swarm] No existing manifest — starting fresh`);
+    } else {
+      console.warn(`[Swarm] Could not load existing manifest — starting fresh:`, err?.message);
+    }
     node = new MantarayNode();
   }
 
@@ -65,13 +73,20 @@ export async function publishData(alert: any, block: any): Promise<string | null
     const saveResult = await node.saveRecursively(bee, NULL_STAMP);
     manifestReference = saveResult.reference.toHex();
 
-    fs.writeFileSync(STATE_FILE, JSON.stringify({ reference: manifestReference }, null, 2));
-
-    const writer = bee.makeFeedWriter(manifestTopic, privateKey);
-    await writer.uploadReference(NULL_STAMP, saveResult.reference);
+    const feedWriter = bee.makeFeedWriter(manifestTopic, privateKey);
+    await feedWriter.uploadReference(NULL_STAMP, saveResult.reference);
 
     const url = `${BZZ_LIMO}/bzz/${manifestReference}/blocks/${block.number}`;
     console.log(`[Swarm] Published: ${url}`);
+    console.log(`[Swarm] Feed URL: ${feedManifestUrl}`);
+    console.log("Feed updated");
+
+    const entries = node.collect();
+    console.log(`[Swarm] All manifest entries (${entries.length}):`);
+    for (const entry of entries) {
+      console.log(`  - ${entry.fullPathString}`);
+    }
+
     return url;
   } catch (err) {
     console.error(`[Swarm] Failed to publish data:`, err);
@@ -79,7 +94,6 @@ export async function publishData(alert: any, block: any): Promise<string | null
   }
 }
 
-export function getManifestUrl(): string | null {
-  if (!manifestReference) return null;
-  return `${BZZ_LIMO}/bzz/${manifestReference}/`;
+export function getFeedUrl(): string | null {
+  return feedManifestUrl;
 }
