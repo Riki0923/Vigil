@@ -2,10 +2,13 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { getNetworkPathsFromCli } from "./lib/paths";
+import { makeLogger } from "./lib/log";
+
+const log = makeLogger("reset");
 
 function main(): void {
   const paths = getNetworkPathsFromCli();
-  console.log(`[reset] network: ${paths.name} (slug ${paths.slug})`);
+  log.start(`network: ${paths.name} (slug ${paths.slug})`);
 
   const root = path.join(__dirname, "..");
   const targets = [
@@ -18,13 +21,13 @@ function main(): void {
     const abs = path.join(root, rel);
     if (fs.existsSync(abs)) {
       fs.unlinkSync(abs);
-      console.log(`[reset] removed ${rel}`);
+      log.reset(`removed ${rel}`);
       removed++;
     } else {
-      console.log(`[reset] not present: ${rel}`);
+      log.info(`not present: ${rel}`);
     }
   }
-  console.log(`[reset] done — ${removed} file(s) removed`);
+  log.ok(`done — ${removed} file(s) removed`);
 }
 
 main();

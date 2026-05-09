@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 import type { Alert } from "./types";
 import { mockAlerts } from "./mock-alerts";
 import { seedAlertsBaseSepolia, seedAlertsBaseSepoliaUpdatedAt } from "./seed-alerts";
+import { makeLogger } from "./log";
+
+const log = makeLogger("loadAlerts");
 
 const SWARM_FEED_URL = process.env.SWARM_FEED_URL;
 const SWARM_FETCH_TIMEOUT_MS = 5_000;
@@ -38,29 +41,29 @@ function isAlert(value: unknown): value is Alert {
 }
 
 async function fetchLatestFromSwarm(url: string): Promise<Alert | null> {
-  console.log(`[loadAlerts] Swarm fetch → ${url}`);
+  log.step(`Swarm fetch → ${url}`);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), SWARM_FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
-    console.log(
-      `[loadAlerts] Swarm response status=${res.status} content-type=${res.headers.get("content-type") ?? "n/a"} feed-index=${res.headers.get("swarm-feed-index") ?? "n/a"}`,
+    log.info(
+      `Swarm response status=${res.status} content-type=${res.headers.get("content-type") ?? "n/a"} feed-index=${res.headers.get("swarm-feed-index") ?? "n/a"}`,
     );
     if (!res.ok) {
-      console.warn(`[loadAlerts] Swarm non-200 (${res.status}) — skipping`);
+      log.warn(`Swarm non-200 (${res.status}) — skipping`);
       return null;
     }
     const data = await res.json();
     if (!isAlert(data)) {
-      console.warn(`[loadAlerts] Swarm payload failed isAlert validation`, data);
+      log.warn(`Swarm payload failed isAlert validation`, data);
       return null;
     }
-    console.log(
-      `[loadAlerts] Swarm OK — id=${data.id} severity=${data.severity} proxy=${data.proxyAddress} tx=${data.txHash}`,
+    log.ok(
+      `Swarm OK — id=${data.id} severity=${data.severity} proxy=${data.proxyAddress} tx=${data.txHash}`,
     );
     return data;
   } catch (err) {
-    console.warn("[loadAlerts] Swarm fetch failed:", err);
+    log.warn("Swarm fetch failed", err);
     return null;
   } finally {
     clearTimeout(timeout);
@@ -79,21 +82,21 @@ async function readAlertsFile(filePath: string, defaultChainId: number): Promise
       ...a,
       chainId: typeof a.chainId === "number" ? a.chainId : defaultChainId,
     }));
-    console.log(
-      `[loadAlerts] file ${path.basename(filePath)} → ${normalized.length} alert(s)`,
+    log.info(
+      `file ${path.basename(filePath)} → ${normalized.length} alert(s)`,
     );
     return { alerts: normalized, updatedAt: parsed.updatedAt };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.error(`[loadAlerts] failed to read ${filePath}:`, err);
+      log.error(`failed to read ${filePath}`, err);
     }
     return null;
   }
 }
 
 export async function loadAlerts(): Promise<LoadAlertsResult> {
-  console.log(
-    `[loadAlerts] start — SWARM_FEED_URL=${SWARM_FEED_URL ? "set" : "unset"}`,
+  log.start(
+    `start — SWARM_FEED_URL=${SWARM_FEED_URL ? "set" : "unset"}`,
   );
 
   const [swarmLatest, main, mainnetFile, sepoliaFile] = await Promise.all([
@@ -122,12 +125,12 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
     return true;
   });
 
-  console.log(
-    `[loadAlerts] composition — swarm=${swarmLatest ? 1 : 0} mainFile=${main?.alerts.length ?? 0} mainnetFile=${mainnetFile?.alerts.length ?? 0} sepoliaFile=${sepoliaFile?.alerts.length ?? 0} seedFallback=${sepoliaFile ? 0 : seedAlertsBaseSepolia.length} → deduped=${deduped.length}`,
+  log.info(
+    `composition — swarm=${swarmLatest ? 1 : 0} mainFile=${main?.alerts.length ?? 0} mainnetFile=${mainnetFile?.alerts.length ?? 0} sepoliaFile=${sepoliaFile?.alerts.length ?? 0} seedFallback=${sepoliaFile ? 0 : seedAlertsBaseSepolia.length} → deduped=${deduped.length}`,
   );
 
   if (deduped.length === 0) {
-    console.log(`[loadAlerts] no alerts found — returning mock`);
+    log.warn("no alerts found — returning mock");
     return { alerts: mockAlerts, source: "mock" };
   }
 
@@ -143,8 +146,8 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
     .sort()
     .pop();
 
-  console.log(
-    `[loadAlerts] returning ${deduped.length} alert(s) source=live updatedAt=${latestUpdated ?? "n/a"}`,
+  log.ok(
+    `returning ${deduped.length} alert(s) source=live updatedAt=${latestUpdated ?? "n/a"}`,
   );
   return { alerts: deduped, source: "live", updatedAt: latestUpdated };
 }

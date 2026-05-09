@@ -16,6 +16,9 @@ import {
   useWriteContract,
 } from "wagmi";
 import { DEMO_WALLET } from "./wallet";
+import { makeLogger } from "./log";
+
+const log = makeLogger("useRevokeApproval");
 
 type Address = `0x${string}`;
 
@@ -80,7 +83,7 @@ export function useRevokeApproval(opts: {
       setState("error");
       return;
     }
-    console.log("[useRevokeApproval] click revoke", {
+    log.start("click revoke", {
       chainId,
       proxy: proxyAddress,
       spender,
@@ -97,7 +100,7 @@ export function useRevokeApproval(opts: {
         if (!wagmiPublicClient) {
           throw new Error(`No public client available for chain ${chainId}`);
         }
-        console.log(`[useRevokeApproval] signing as connected ${connectedAddress}`);
+        log.sign(`signing as connected ${connectedAddress}`);
         hash = await writeContractAsync({
           chainId,
           address: proxyAddress,
@@ -105,12 +108,12 @@ export function useRevokeApproval(opts: {
           functionName: "approve",
           args: [spender, 0n],
         });
-        console.log(`[useRevokeApproval] tx submitted: ${hash}`);
+        log.tx(`tx submitted: ${hash}`);
         setTxHash(hash);
         setState("mining");
         const receipt = await wagmiPublicClient.waitForTransactionReceipt({ hash });
-        console.log(
-          `[useRevokeApproval] tx mined block=${receipt.blockNumber} status=${receipt.status}`,
+        log.ok(
+          `tx mined block=${receipt.blockNumber} status=${receipt.status}`,
         );
       } else {
         if (!DEMO_WALLET_PRIVATE_KEY) {
@@ -121,7 +124,7 @@ export function useRevokeApproval(opts: {
           throw new Error(`Unsupported chain: ${chainId}`);
         }
         const account = privateKeyToAccount(DEMO_WALLET_PRIVATE_KEY);
-        console.log(`[useRevokeApproval] signing as demo ${account.address} on ${chain.name}`);
+        log.sign(`signing as demo ${account.address} on ${chain.name}`);
         const walletClient = createWalletClient({ account, chain, transport: http() });
         const publicClient = createPublicClient({ chain, transport: http() });
         hash = await walletClient.writeContract({
@@ -130,19 +133,19 @@ export function useRevokeApproval(opts: {
           functionName: "approve",
           args: [spender, 0n],
         });
-        console.log(`[useRevokeApproval] tx submitted: ${hash}`);
+        log.tx(`tx submitted: ${hash}`);
         setTxHash(hash);
         setState("mining");
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        console.log(
-          `[useRevokeApproval] tx mined block=${receipt.blockNumber} status=${receipt.status}`,
+        log.ok(
+          `tx mined block=${receipt.blockNumber} status=${receipt.status}`,
         );
       }
 
       setState("mined");
       onSuccess?.();
     } catch (err) {
-      console.error("[useRevokeApproval] revoke failed:", err);
+      log.error("revoke failed", err);
       const msg = err instanceof Error ? err.message : "revoke failed";
       setError(msg);
       setState("error");

@@ -2,6 +2,9 @@ import hre, { ethers } from "hardhat";
 import * as fs from "fs";
 
 import { getNetworkPaths } from "./lib/paths";
+import { makeLogger } from "./lib/log";
+
+const log = makeLogger("seed");
 
 interface DeploymentRecord {
   proxyAddress: string;
@@ -11,7 +14,7 @@ interface DeploymentRecord {
 
 async function main(): Promise<void> {
   const paths = getNetworkPaths(hre);
-  console.log(`[seed] Network:    ${paths.name} (chainId ${paths.chainId})`);
+  log.start(`Network:    ${paths.name} (chainId ${paths.chainId})`);
 
   if (!fs.existsSync(paths.deploymentsPath)) {
     throw new Error(
@@ -33,15 +36,15 @@ async function main(): Promise<void> {
 
   const [owner] = await ethers.getSigners();
   const demoWallet = new ethers.Wallet(demoWalletKey, ethers.provider);
-  console.log(`[seed] proxy:      ${proxyAddress}`);
-  console.log(`[seed] owner:      ${owner.address}`);
-  console.log(`[seed] demoWallet: ${demoWallet.address}`);
-  console.log(`[seed] spender:    ${demoSpender}`);
+  log.info(`proxy:      ${proxyAddress}`);
+  log.info(`owner:      ${owner.address}`);
+  log.info(`demoWallet: ${demoWallet.address}`);
+  log.info(`spender:    ${demoSpender}`);
 
   const ownerBalance = await ethers.provider.getBalance(owner.address);
   const demoBalance = await ethers.provider.getBalance(demoWallet.address);
-  console.log(`[seed] owner ETH:      ${ethers.formatEther(ownerBalance)}`);
-  console.log(`[seed] demoWallet ETH: ${ethers.formatEther(demoBalance)}`);
+  log.info(`owner ETH:      ${ethers.formatEther(ownerBalance)}`);
+  log.info(`demoWallet ETH: ${ethers.formatEther(demoBalance)}`);
   if (demoBalance === 0n) {
     throw new Error(
       `Demo wallet ${demoWallet.address} has 0 ETH on ${paths.name}. Fund it${paths.name === "baseSepolia" ? " from a faucet" : ""} first.`,
@@ -54,31 +57,31 @@ async function main(): Promise<void> {
   const targetBalance = ethers.parseEther("100");
   if (existingBalance < targetBalance) {
     const mintAmount = targetBalance - existingBalance;
-    console.log(`[seed] minting ${ethers.formatEther(mintAmount)} DEMO to demo wallet…`);
+    log.seed(`minting ${ethers.formatEther(mintAmount)} DEMO to demo wallet…`);
     const mintTx = await token.mint(demoWallet.address, mintAmount);
     await mintTx.wait();
-    console.log(`[seed] mint tx: ${mintTx.hash}`);
+    log.tx(`mint tx: ${mintTx.hash}`);
   } else {
-    console.log(
-      `[seed] demo wallet already holds ${ethers.formatEther(existingBalance)} DEMO — skipping mint`,
+    log.info(
+      `demo wallet already holds ${ethers.formatEther(existingBalance)} DEMO — skipping mint`,
     );
   }
 
-  console.log(`[seed] approving spender for MAX from demo wallet…`);
+  log.sign("approving spender for MAX from demo wallet…");
   const tokenAsDemo = token.connect(demoWallet) as typeof token;
   const approveTx = await tokenAsDemo.approve(demoSpender, ethers.MaxUint256);
   await approveTx.wait();
-  console.log(`[seed] approve tx: ${approveTx.hash}`);
+  log.tx(`approve tx: ${approveTx.hash}`);
 
   const allowance: bigint = await token.allowance(demoWallet.address, demoSpender);
   const balance: bigint = await token.balanceOf(demoWallet.address);
-  console.log(`[seed] post-state:`);
-  console.log(`[seed]   balance:   ${ethers.formatEther(balance)} DEMO`);
-  console.log(`[seed]   allowance: ${allowance.toString()}`);
-  console.log(`[seed] done.`);
+  log.info(`post-state:`);
+  log.info(`  balance:   ${ethers.formatEther(balance)} DEMO`);
+  log.info(`  allowance: ${allowance.toString()}`);
+  log.ok("done.");
 }
 
 main().catch((err) => {
-  console.error(err);
+  log.error("seed failed", err);
   process.exit(1);
 });
