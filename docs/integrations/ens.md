@@ -1,10 +1,21 @@
 # ENS Integration
 
-Vigil uses [ENS](https://ens.domains) on Ethereum Sepolia as its identity, configuration, off-chain discovery, multichain target binding, L2 reverse-naming, and reputation log. The agent both reads from and writes to ENS as part of its normal runtime.
+Vigil uses [ENS](https://ens.domains) on **Ethereum mainnet** (production parent `vigilbot.eth`) and **Ethereum Sepolia** (dev parent `vigil.eth`) as its identity, configuration, off-chain discovery, multichain target binding, L2 reverse-naming, and reputation log. The agent both reads from and writes to ENS as part of its normal runtime.
+
+## Networks
+
+The agent and frontend pick a network at runtime via the `VIGIL_ENS_NETWORK` environment variable:
+
+| Network | Parent | Subnames point at | Default for |
+| --- | --- | --- | --- |
+| `mainnet` | `vigilbot.eth` (Ethereum mainnet, chain id 1) | Base mainnet (chain id 8453) addresses via ENSIP-11 coin type `2147491981` | **frontend** |
+| `sepolia` | `vigil.eth` (Ethereum Sepolia, chain id 11155111) | Base Sepolia (chain id 84532) addresses via ENSIP-11 coin type `2147567180` | **agent runtime** (backward compatibility) |
+
+Both networks share the same record schema and reputation log mechanism. The agent module (`src/ens/`) exposes network-keyed accessors (`getEnsContracts(network)`, `getEnsProvider(network)`, `getEnsSigner(network)`) so scripts can target either network with a `--network=sepolia|mainnet` CLI flag. Set `VIGIL_ENS_NETWORK=mainnet` on the production Worker to read from `vigilbot.eth`.
 
 ## Overview
 
-Six distinct concerns are served by ENS records on `vigil.eth` and its subnames:
+Six distinct concerns are served by ENS records on the active parent and its subnames:
 
 | # | Concern | Records | Subname |
 | --- | --- | --- | --- |
@@ -183,9 +194,14 @@ No Vigil-controlled endpoint is involved.
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `SEPOLIA_RPC_URL` | Yes (for full functionality) | Ethereum Sepolia JSON-RPC endpoint. Used for both reads (resolver text/addr) and writes (reputation `setText` transactions). When unset, the agent runs in legacy mode: no severity floor, no name tagging, no reputation writes. |
-| `ENS_REGISTRAR_PRIVATE_KEY` | For write operations only | Wallet that owns `vigil.eth` on Sepolia. Used by the agent for reputation writes and by the operational scripts for subname creation and record updates. |
-| `ENS_PARENT_NAME` | No (default `vigil.eth`) | Override for the parent name. |
+| `VIGIL_ENS_NETWORK` | No (defaults: agent → `sepolia`, frontend → `mainnet`) | `mainnet` or `sepolia`. Selects which parent the runtime reads from. |
+| `SEPOLIA_RPC_URL` | Yes when `VIGIL_ENS_NETWORK=sepolia` | Ethereum Sepolia JSON-RPC endpoint. Used for reads + writes against `vigil.eth`. |
+| `MAINNET_RPC_URL` | Yes when `VIGIL_ENS_NETWORK=mainnet` | Ethereum mainnet JSON-RPC endpoint. Used for reads + writes against `vigilbot.eth`. |
+| `ENS_REGISTRAR_PRIVATE_KEY` | For write operations only | Wallet that owns the parent name. The same key signs both Sepolia and mainnet writes; it must own `vigil.eth` on Sepolia and/or `vigilbot.eth` on mainnet for the corresponding network's writes to succeed. |
+| `VIGIL_PARENT_ENS_NAME` | No (default `vigil.eth`) | Override for the Sepolia parent name. |
+| `VIGIL_PARENT_ENS_NAME_MAINNET` | No (default `vigilbot.eth`) | Override for the mainnet parent name. |
+| `VIGIL_AGENT_ENS_NAME` | No (default `agent.vigil.eth`) | Override for the Sepolia agent subname. |
+| `VIGIL_AGENT_ENS_NAME_MAINNET` | No (default `agent.vigilbot.eth`) | Override for the mainnet agent subname. |
 
 ### File-based configuration
 
@@ -199,11 +215,11 @@ No Vigil-controlled endpoint is involved.
 
 | Module | Exports |
 | --- | --- |
-| [`client.ts`](../../src/ens/client.ts) | Sepolia provider/signer wiring, ENSIP-11 coin type helpers. |
+| [`client.ts`](../../src/ens/client.ts) | `ENS_SEPOLIA` + `ENS_MAINNET` contract address constants, network-keyed accessors `getEnsContracts(network)` / `getEnsProvider(network)` / `getEnsSigner(network)`, plus per-network shortcuts (`getSepoliaProvider`, `getMainnetProvider`, etc.) and ENSIP-11 coin type helpers. |
 | [`abi.ts`](../../src/ens/abi.ts) | Minimal ABIs for the ENS Registry, public Resolver, NameWrapper, and L2 ReverseRegistrar. |
 | [`records.ts`](../../src/ens/records.ts) | Typed record key constants and parsers for `vigil.capabilities` and `vigil.severity-min`. |
-| [`reader.ts`](../../src/ens/reader.ts) | `resolveAgentConfig`, `resolveTargetConfig`, `isNameRegistered`. |
-| [`writer.ts`](../../src/ens/writer.ts) | `updateTargetReputation` — performs the four `setText` calls per alert. |
+| [`reader.ts`](../../src/ens/reader.ts) | `resolveAgentConfig`, `resolveTargetConfig`, `isNameRegistered`. Selects active network via `VIGIL_ENS_NETWORK`. |
+| [`writer.ts`](../../src/ens/writer.ts) | `updateTargetReputation` — performs the four `setText` calls per alert against the active network. |
 | [`cache.ts`](../../src/ens/cache.ts) | Address-to-name lookup backed by `data/ens-targets.json`. |
 
 ### Frontend (`frontend/lib/ens.ts`)
@@ -216,14 +232,16 @@ No Vigil-controlled endpoint is involved.
 
 ## Operational Scripts
 
+All ENS scripts under `scripts/ens/` accept `--network=sepolia|mainnet` (default `sepolia`). The Base reverse-name script (`set-base-primary`) takes a different flag, `--network=base-sepolia|base-mainnet` (default `base-sepolia`), because it operates on the Base L2 reverse registrar rather than the Ethereum parent.
+
 | Command | Purpose |
 | --- | --- |
-| `npm run ens:check` | Confirms wallet balance, name availability, and current price for the parent registration. |
-| `npm run ens:register` | Performs the commit-reveal flow plus native NameWrapper wrap for the parent name. |
-| `npm run ens:seed` | Creates the agent and target subnames and writes initial records (`description`, `url`, `vigil.capabilities`, `vigil.severity-min`, ENSIP-11 addr). |
-| `npm run ens:sync-feed` | Writes the current Swarm feed URL to `agent.vigil.eth` as `vigil.feed`. Run after pinning a new `SWARM_PRIVATE_KEY`. |
-| `npm run ens:set-base-primary` | Submits the ENSIP-19 reverse record on Base Sepolia for a watched proxy. |
-| `npm run ens:resolve <name>` | Reads every text record and the ENSIP-11 addr for a name. Used for verification. |
+| `tsx scripts/ens/check-parent.ts [--network=mainnet]` | Confirms wallet balance, name availability, and current price for the parent registration on the chosen network. |
+| `tsx scripts/ens/register-parent.ts [--network=mainnet] [--name=<x>]` | Performs the commit-reveal flow plus native NameWrapper wrap for the parent name. |
+| `tsx scripts/ens/seed-subnames.ts [--network=mainnet]` | Creates the agent and target subnames and writes initial records (`description`, `url`, `vigil.capabilities`, `vigil.severity-min`, ENSIP-11 addr). |
+| `tsx scripts/ens/sync-feed.ts [--network=mainnet]` | Writes the current Swarm feed URL to `agent.<parent>` as `vigil.feed`. Run after pinning a new `SWARM_PRIVATE_KEY`. |
+| `tsx scripts/ens/set-base-primary.ts [--network=base-mainnet]` | Submits the ENSIP-19 reverse record on Base for the watched proxy. |
+| `tsx scripts/ens/resolve.ts [--network=mainnet] <name>` | Reads every text record and the ENSIP-11 addr for a name. Used for verification. |
 
 ## Failure Modes
 
@@ -239,13 +257,21 @@ No Vigil-controlled endpoint is involved.
 ## Verification
 
 ```bash
-npm run ens:resolve agent.vigil.eth     # six records on the agent identity
-npm run ens:resolve demo.vigil.eth      # ENSIP-11 addr + reputation records
+# Mainnet (production)
+tsx scripts/ens/resolve.ts --network=mainnet agent.vigilbot.eth   # six records on the agent identity
+tsx scripts/ens/resolve.ts --network=mainnet demo.vigilbot.eth    # ENSIP-11 addr + reputation records
 
-cd frontend && npm run dev              # dashboard surfaces both
+# Sepolia (dev / legacy)
+tsx scripts/ens/resolve.ts agent.vigil.eth                        # six records on the agent identity
+tsx scripts/ens/resolve.ts demo.vigil.eth                         # ENSIP-11 addr + reputation records
+
+cd frontend && npm run dev                                         # dashboard surfaces both (frontend defaults to mainnet)
 ```
 
-Live ENS app view: `https://app.ens.domains/agent.vigil.eth?network=sepolia`.
+Live ENS app views:
+
+- Mainnet: <https://app.ens.domains/agent.vigilbot.eth>
+- Sepolia: <https://app.ens.domains/agent.vigil.eth?network=sepolia>
 
 ## References
 

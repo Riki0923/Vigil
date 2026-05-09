@@ -13,9 +13,9 @@ Vigil watches every block on **Base mainnet** (chainId 8453) for EIP-1967 `Upgra
 3. **Diff** — storage layouts ([`diffStorage`](src/sourcify/diffStorage.ts)) and ABIs ([`diffFunctions`](src/sourcify/diffFunctions.ts)) are compared. Moved/removed slots and added/removed/modified functions become risk flags. Sensitive names (`upgradeTo`, `withdraw`, `selfdestruct`, …) bump severity.
 4. **Score** — combines storage and function risk into `LOW | MEDIUM | HIGH | CRITICAL`. Partial Sourcify matches bump severity by one.
 5. **Analyse** — [`agent/analyser`](src/agent/analyser.ts) sends the diff bundle (plus NatSpec when available) to OpenAI `gpt-4o` and returns a structured `{summary, explanation, recommendation, confidence}` JSON.
-6. **Publish** — the alert is logged, appended to [`data/alerts.json`](data/) (per-chain, so Base mainnet alerts and Base Sepolia alerts route to separate stores), and uploaded to Swarm via [`@ethersphere/bee-js`](src/swarm/index.ts) through the `bzz.limo` gateway (no postage stamp required). The `{alert, block}` envelope is added to a single Mantaray manifest under `blocks/<n>`; the manifest's signed feed (topic `vigil-manifest`) is the canonical subscriber endpoint and persists across restarts when `SWARM_PRIVATE_KEY` is pinned. After each alert, the agent also writes four reputation text records (`vigil.last-severity`, `vigil.last-upgrade-at`, `vigil.last-tx`, `vigil.upgrade-count`) back to the matching `*.vigil.eth` subname on Sepolia — turning ENS into a live, on-chain reputation log other agents can read.
+6. **Publish** — the alert is logged, appended to [`data/alerts.json`](data/) (per-chain, so Base mainnet alerts and Base Sepolia alerts route to separate stores), and uploaded to Swarm via [`@ethersphere/bee-js`](src/swarm/index.ts) through the `bzz.limo` gateway (no postage stamp required). The `{alert, block}` envelope is added to a single Mantaray manifest under `blocks/<n>`; the manifest's signed feed (topic `vigil-manifest`) is the canonical subscriber endpoint and persists across restarts when `SWARM_PRIVATE_KEY` is pinned. After each alert, the agent also writes four reputation text records (`vigil.last-severity`, `vigil.last-upgrade-at`, `vigil.last-tx`, `vigil.upgrade-count`) back to the matching subname on the active ENS parent (`vigilbot.eth` on mainnet or `vigil.eth` on Sepolia, selected by `VIGIL_ENS_NETWORK`) — turning ENS into a live, on-chain reputation log other agents can read.
 
-The frontend pulls alerts from (in order) the configured Swarm feed URL, local `data/alerts.json` for Base mainnet, `data/alerts-base-sepolia.json` (or an inline TS seed) for Base Sepolia, falling back to mock data when nothing is available. A chain selector switches the view between Base and Base Sepolia, and any alert can be opened in a per-alert AI chat grounded in that alert's JSON. The dashboard's header card resolves `agent.vigil.eth` live from Sepolia ENS (description, capabilities, severity floor, `vigil.feed` URL); each alert card embeds a reputation panel resolved from the matching target subname (`*.vigil.eth`).
+The frontend pulls alerts from (in order) the configured Swarm feed URL, local `data/alerts.json` for Base mainnet, `data/alerts-base-sepolia.json` (or an inline TS seed) for Base Sepolia, falling back to mock data when nothing is available. A chain selector switches the view between Base and Base Sepolia, and any alert can be opened in a per-alert AI chat grounded in that alert's JSON. The dashboard's header card resolves the active agent subname live from ENS (`agent.vigilbot.eth` on Ethereum mainnet by default, or `agent.vigil.eth` on Sepolia when `VIGIL_ENS_NETWORK=sepolia` — frontend defaults to mainnet); each alert card embeds a reputation panel resolved from the matching target subname.
 
 When the demo wallet (or a wallet the user has connected) has a non-zero approval on the same proxy that just emitted an upgrade alert, the alert card surfaces a **"Your wallet is exposed — revoke approval"** banner. One click submits `approve(spender, 0)`. If the user has an injected wallet connected, wagmi routes the tx through it (MetaMask popup, chain-switch prompt if needed); otherwise the frontend falls back to signing directly via viem with the embedded testnet `NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY` so the demo can run hands-off.
 
@@ -74,7 +74,7 @@ docs/                        development plan, pitch, swarm notes,
 - [Sourcify v2](https://sourcify.dev) for verified sources, storage layouts, ABIs, NatSpec, similarity
 - [OpenAI](https://platform.openai.com) `gpt-4o` for risk analysis (Groq SDK is installed and stubbed as a fallback in [`agent/analyser`](src/agent/analyser.ts), but currently commented out)
 - [`@ethersphere/bee-js`](https://github.com/ethersphere/bee-js) signed Swarm feed publishing through the `bzz.limo` gateway with `NULL_STAMP` (no postage batch needed)
-- ENS reader + writer (ethers) for `agent.vigil.eth` identity records, `demo.vigil.eth` ENSIP-11 multichain `addr`, an address→name JSON cache, and per-target reputation text records written after every alert
+- ENS reader + writer (ethers) supporting both Ethereum mainnet (`vigilbot.eth` parent) and Ethereum Sepolia (`vigil.eth` parent) — selected at runtime by `VIGIL_ENS_NETWORK`. Reads identity records on the active agent subname, ENSIP-11 multichain `addr` on target subnames, an address→name JSON cache, and writes per-target reputation text records after every alert
 
 ### Frontend
 
@@ -153,9 +153,14 @@ The Worker generates its keypair on first boot if `SWARM_PRIVATE_KEY` is unset. 
 - **Branch:** `dev` — `main` historically lacked the `npm start` script so the container would crash with `Cannot find module '/app/index.js'`.
 - **Logs:** the **Deploy Logs** tab streams the agent's stdout (`[Vigil] Connected to network`, `[UpgradeWatcher] Listening`, `[Swarm] Alert published`, etc.). The **Network Flow Logs** tab is low-level packet captures and not useful for app-level debugging.
 
-## ENS identity (`vigil.eth` on Ethereum Sepolia)
+## ENS identity (`vigilbot.eth` on mainnet, `vigil.eth` on Sepolia)
 
-Vigil's agent and the contracts it watches have human names anchored to `vigil.eth`, registered on **Ethereum Sepolia** (chain id 11155111). Subnames carry the agent's runtime configuration and point to the addresses the agent actually watches on Base Sepolia (chain id 84532).
+Vigil's agent and the contracts it watches have human names anchored to two ENS parents, one per network:
+
+- **Production:** `vigilbot.eth` on **Ethereum mainnet** (chain id 1) → subnames point to addresses on **Base mainnet** (chain id 8453).
+- **Dev / legacy:** `vigil.eth` on **Ethereum Sepolia** (chain id 11155111) → subnames point to **Base Sepolia** (chain id 84532).
+
+The agent and frontend pick a network at runtime via `VIGIL_ENS_NETWORK` (`mainnet` | `sepolia`). Frontend defaults to `mainnet`; agent defaults to `sepolia` for backward compatibility — set `VIGIL_ENS_NETWORK=mainnet` on the Worker to read from `vigilbot.eth` in production. The record schema below is identical on both networks.
 
 | Subname | Purpose | Records |
 | --- | --- | --- |
@@ -187,6 +192,16 @@ Reputation lookup is symmetric — `npm run ens:resolve demo.vigil.eth` returns 
 
 ### Live deployment (2026-05-09)
 
+**Production — Ethereum mainnet + Base mainnet (`vigilbot.eth`):**
+
+| Record | Chain · address / tx | Notes |
+| --- | --- | --- |
+| `vigilbot.eth` (registered) | Ethereum mainnet | Production parent. Owner `0xf5B1d9144d9D005CD74cFC2d1A22cbAF4e8E8736`. |
+| `demo.vigilbot.eth` proxy | Base mainnet · [`0x91F276F9…6358f`](https://basescan.org/address/0x91F276F98a20d3fBC27e3d8ccE73Ad0e78C6358f) | UUPS proxy used for the live revoke demo. Latest impl + tx history in [`demo-target/DEPLOYMENTS.md`](demo-target/DEPLOYMENTS.md#base-mainnet--2026-05-09-active-production-proxy). |
+| ENSIP-19 reverse on Base mainnet | Base mainnet · [`0xe8ece43a…ab6561`](https://basescan.org/tx/0xe8ece43a53f14e369557a5ed2c0519a5dfe678bf66c8d67d545d917389ab6561), block 45784174 | Demo proxy → primary name `demo.vigilbot.eth`. L2ReverseRegistrar `0x0000000000D8e504002cC26E3Ec46D81971C1664`. |
+
+**Dev / legacy — Ethereum Sepolia + Base Sepolia (`vigil.eth`):**
+
 | Record | Chain · tx | Notes |
 | --- | --- | --- |
 | `vigil.eth` (registered + wrapped, 1 year) | Sepolia · [`0x0802bd0d…b15c4f`](https://sepolia.etherscan.io/tx/0x0802bd0daeb44a50588b374a73c685dd6940d699774c1f1436c1807889b15c4f), block 10821165 | Owner `0xf5B1d9144d9D005CD74cFC2d1A22cbAF4e8E8736`. Native NameWrapper wrap as part of `register()`. |
@@ -203,44 +218,49 @@ Verify on the ENS app: <https://app.ens.domains/agent.vigil.eth?network=sepolia>
 
 ### Re-running setup from scratch
 
-If you ever need to redeploy under a different parent name or against a fresh wallet:
+If you ever need to redeploy under a different parent name or against a fresh wallet. **Append `--network=mainnet` to any ENS script for the production parent (`vigilbot.eth` on mainnet); omit for Sepolia (`vigil.eth`).** The same `ENS_REGISTRAR_PRIVATE_KEY` signs both — fund it on whichever network you target.
 
-1. Register the parent on Ethereum Sepolia. The repo ships an end-to-end script that handles commit-reveal + native NameWrapper wrap in one go (the controller wraps as part of `register` when called this way). Cost ≈ 0.003 ETH/year for 5+ char names:
+1. Register the parent. The repo ships an end-to-end script that handles commit-reveal + native NameWrapper wrap in one go. Cost ≈ 0.003 ETH/year for 5+ char names on Sepolia (mainnet pricing varies by name length and premium):
 
    ```bash
-   npm run ens:check       # wallet balance + name availability + price
-   npm run ens:register    # commit, wait minCommitmentAge + 30s on-chain, register + wrap
+   tsx scripts/ens/check-parent.ts                          # Sepolia (default)
+   tsx scripts/ens/check-parent.ts --network=mainnet        # mainnet preflight
+   tsx scripts/ens/register-parent.ts --network=mainnet --name=vigilbot.eth
    ```
 
 2. Create subnames + records:
 
    ```bash
-   npm run ens:seed
+   tsx scripts/ens/seed-subnames.ts                         # Sepolia
+   tsx scripts/ens/seed-subnames.ts --network=mainnet       # mainnet (vigilbot.eth)
    ```
 
-3. Publish the agent's Swarm feed URL on `agent.vigil.eth` so subscribers can discover it. Re-run any time `SWARM_PRIVATE_KEY` rotates:
+3. Publish the agent's Swarm feed URL on the active agent subname so subscribers can discover it. Re-run any time `SWARM_PRIVATE_KEY` rotates:
 
    ```bash
-   npm run ens:sync-feed
+   tsx scripts/ens/sync-feed.ts                             # Sepolia
+   tsx scripts/ens/sync-feed.ts --network=mainnet           # mainnet
    ```
 
-4. (Optional) Bootstrap the feed with a placeholder alert so `vigil.feed` returns parseable JSON to subscribers and judges before the first real upgrade lands:
+4. (Optional) Bootstrap the feed with a placeholder alert so `vigil.feed` returns parseable JSON to subscribers before the first real upgrade lands:
 
    ```bash
    tsx scripts/swarm/seed-feed.ts
    ```
 
-5. (Optional) ENSIP-19 reverse on Base Sepolia. Verify the L2 reverse registrar address against <https://docs.ens.domains/learn/deployments> and override `BASE_SEPOLIA_REVERSE_REGISTRAR` if needed:
+5. (Optional) ENSIP-19 reverse on Base. Note this script uses `--network=base-sepolia | base-mainnet` (different from the ENS scripts). Verify the L2 reverse registrar address against <https://docs.ens.domains/learn/deployments>:
 
    ```bash
-   npm run ens:set-base-primary
+   tsx scripts/ens/set-base-primary.ts                              # default base-sepolia
+   tsx scripts/ens/set-base-primary.ts --network=base-mainnet
    ```
 
 6. Sanity-check live resolution at any time:
 
    ```bash
-   npm run ens:resolve agent.vigil.eth
-   npm run ens:resolve demo.vigil.eth
+   tsx scripts/ens/resolve.ts agent.vigil.eth
+   tsx scripts/ens/resolve.ts --network=mainnet agent.vigilbot.eth
+   tsx scripts/ens/resolve.ts --network=mainnet demo.vigilbot.eth
    ```
 
 ### Removing ENS breaks the demo (intentional)
@@ -253,22 +273,26 @@ The [`demo-target/`](demo-target/) sub-project deploys an intentionally-vulnerab
 
 > **Status:** end-to-end run #1 completed live on Base Sepolia (2026-05-09). Both implementations are verified on Sourcify and Basescan; the upgrade tx fired the `Upgraded(address)` event Vigil watches for. Addresses recorded in [`demo-target/DEPLOYMENTS.md`](demo-target/DEPLOYMENTS.md). Design spec at [`docs/superpowers/specs/2026-05-08-demo-target-design.md`](docs/superpowers/specs/2026-05-08-demo-target-design.md).
 
-Workflow:
+Workflow (Base Sepolia by default — append `:mainnet` to any script for Base mainnet):
 
 ```bash
 cd demo-target
 npm install
-cp .env.example .env       # DEPLOYER_PRIVATE_KEY (funded on Base Sepolia) + RPC_URL + ETHERSCAN_API_KEY
-                           # Add DEMO_WALLET_PRIVATE_KEY + DEMO_SPENDER_ADDRESS for seed-demo-wallet
-npm run cycle              # reset + deploy V1 + upgrade to V2 in one shot
+cp .env.example .env       # DEPLOYER_PRIVATE_KEY + RPC_URL (Sepolia) + RPC_URL_BASE_MAINNET (mainnet)
+                           # + ETHERSCAN_API_KEY; add DEMO_WALLET_PRIVATE_KEY + DEMO_SPENDER_ADDRESS for seed-demo-wallet
+npm run cycle              # Sepolia: reset + deploy V1 + upgrade to V2 in one shot
+npm run cycle:mainnet      # Base mainnet equivalent (creates a new proxy — only run for first-time setup)
 # or run the steps individually:
-npm run deploy             # deploy V1 proxy, verify on Sourcify + Basescan
+npm run deploy             # deploy V1 proxy on Sepolia, verify on Sourcify + Basescan
+npm run deploy:mainnet     # same on Base mainnet
 npm run seed-demo-wallet   # mint DEMO + approve(spender, MAX) from a separate demo wallet
-npm run upgrade            # deploy V2, upgrade proxy, verify — fires Upgraded(address)
-npm run reset              # wipe deployments/ to start from a clean slate
+npm run upgrade            # deploy V2, upgrade proxy — fires Upgraded(address)
+npm run upgrade:mainnet    # same on Base mainnet
+npm run reset              # wipe Sepolia deployments/ to start from a clean slate
+npm run reset:mainnet      # wipe Base mainnet deployments/
 ```
 
-`ETHERSCAN_API_KEY` is the Etherscan v2 multichain key (one key covers Base Sepolia and others). Sourcify verification needs no key. `DEMO_WALLET_PRIVATE_KEY` and `DEMO_SPENDER_ADDRESS` are only needed when running `seed-demo-wallet` to set up the revoke-on-upgrade demo flow.
+`ETHERSCAN_API_KEY` is the Etherscan v2 multichain key (one key covers both Base networks). Sourcify verification needs no key. `DEMO_WALLET_PRIVATE_KEY` and `DEMO_SPENDER_ADDRESS` are only needed when running `seed-demo-wallet[:mainnet]` to set up the revoke-on-upgrade demo flow.
 
 Point Vigil's `RPC_URL` at the same Base Sepolia endpoint as the demo target while testing — or use the recorded run #1 addresses to replay the upgrade event without burning gas (see [`DEPLOYMENTS.md`](demo-target/DEPLOYMENTS.md#replaying-this-upgrade-in-vigil)).
 
@@ -286,14 +310,15 @@ Implementation in [`RevokeBanner`](frontend/app/components/RevokeBanner.tsx) (UI
 
 ### Re-arming between pitches
 
-Once V1 is deployed and you've run a pitch through to **Revoke approval** (allowance is now 0), use `npm run demo-cycle` from [`demo-target/`](demo-target/) to reset for the next pitch in one shot:
+Once V1 is deployed and you've run a pitch through to **Revoke approval** (allowance is now 0), use `demo-cycle` from [`demo-target/`](demo-target/) to reset for the next pitch in one shot:
 
 ```bash
 cd demo-target
-npm run demo-cycle
+npm run demo-cycle              # Base Sepolia (default)
+npm run demo-cycle:mainnet      # Base mainnet (production demo)
 ```
 
-This bumps the `VIGIL_DEMO_BUILD` constant in `DemoTokenV2.sol` (so the new impl bytecode is unique → fresh `Upgraded` event), deploys a fresh V2 impl, calls `upgradeToAndCall` on the existing proxy, verifies on Sourcify, and re-approves `DEMO_WALLET → DEMO_SPENDER` for `MaxUint256`. End-to-end ≈ 30 s, ≈ 0.0005 ETH on Base Sepolia. Same proxy address across pitches, so ENS records and frontend env vars don't need re-pointing.
+This bumps the `VIGIL_DEMO_BUILD` constant in `DemoTokenV2.sol` (so the new impl bytecode is unique → fresh `Upgraded` event), deploys a fresh V2 impl, calls `upgradeToAndCall` on the existing proxy, verifies on Sourcify, and re-approves `DEMO_WALLET → DEMO_SPENDER` for `MaxUint256`. End-to-end ≈ 30 s, ≈ 0.0005 ETH on Base Sepolia (mainnet costs more — gas-dependent). Same proxy address across pitches, so ENS records and frontend env vars don't need re-pointing.
 
 Inside Claude Code, the [`demo-cycle` skill](.claude/skills/demo-cycle/SKILL.md) wraps the same script and additionally polls `data/alerts-base-sepolia.json` to confirm the watcher saw the new alert. Trigger it with phrases like "demo cycle", "arm the demo", or "prep the pitch". Spec + plan: [`docs/superpowers/specs/2026-05-09-demo-cycle-design.md`](docs/superpowers/specs/2026-05-09-demo-cycle-design.md), [`docs/superpowers/plans/2026-05-09-demo-cycle.md`](docs/superpowers/plans/2026-05-09-demo-cycle.md).
 
@@ -314,17 +339,23 @@ Core pipeline:
 | `OPENAI_API_KEY` | Used by the analyser (`gpt-4o`). |
 | `SWARM_PRIVATE_KEY` | 32-byte hex key used to sign the Swarm feed. Auto-generated and printed on first run if missing — copy it back into `.env` to keep the same feed across restarts. |
 
-ENS — read at agent boot and consumed by the `ens:*` scripts:
+ENS — read at agent boot and consumed by the ENS scripts:
 
 | Variable | Purpose |
 | --- | --- |
-| `SEPOLIA_RPC_URL` | Ethereum Sepolia RPC. Required to read `agent.vigil.eth` records and to register/seed names. Without it, the agent runs in legacy mode (no name tagging, no severity floor). |
-| `VIGIL_PARENT_ENS_NAME` | Defaults to `vigil.eth`. Override to point the agent at a different parent name. |
-| `VIGIL_AGENT_ENS_NAME` | Defaults to `agent.vigil.eth`. Subname read at boot for `description`, `url`, `vigil.capabilities`, and `vigil.severity-min`. |
-| `ENS_REGISTRAR_PRIVATE_KEY` | Required by `ens:seed`, `ens:set-base-primary`, and `ens:sync-feed`. Also enables the agent's per-alert reputation writes to target subnames during normal operation — without it, the agent runs read-only and skips reputation updates. Wallet must own `vigil.eth` on Sepolia. |
-| `BASE_SEPOLIA_RPC_URL` | Used by `ens:set-base-primary`. Defaults to `https://sepolia.base.org`. |
-| `BASE_SEPOLIA_PRIVATE_KEY` | Required by `ens:set-base-primary` to sign the ERC-191 message authorising the L2ReverseRegistrar to set the proxy's primary name. Must be the deployer (owner) of the demo proxy. |
+| `VIGIL_ENS_NETWORK` | `mainnet` or `sepolia`. Selects which ENS parent the agent reads at boot. Defaults to `sepolia` for backward compatibility — set to `mainnet` in production to read `vigilbot.eth`. |
+| `SEPOLIA_RPC_URL` | Ethereum Sepolia RPC. Required when `VIGIL_ENS_NETWORK=sepolia` and by `--network=sepolia` script invocations. Without it, the agent runs in legacy mode (no name tagging, no severity floor). |
+| `MAINNET_RPC_URL` | Ethereum mainnet RPC. Required when `VIGIL_ENS_NETWORK=mainnet` and by `--network=mainnet` script invocations (registration, seeding, reputation writes against `vigilbot.eth`). |
+| `VIGIL_PARENT_ENS_NAME` | Defaults to `vigil.eth` (Sepolia parent). |
+| `VIGIL_PARENT_ENS_NAME_MAINNET` | Defaults to `vigilbot.eth` (mainnet parent). |
+| `VIGIL_AGENT_ENS_NAME` | Defaults to `agent.vigil.eth` (Sepolia agent subname). |
+| `VIGIL_AGENT_ENS_NAME_MAINNET` | Defaults to `agent.vigilbot.eth` (mainnet agent subname). |
+| `ENS_REGISTRAR_PRIVATE_KEY` | Required by all ENS write scripts (`register-parent`, `seed-subnames`, `set-base-primary`, `sync-feed`). Also enables the agent's per-alert reputation writes — without it, the agent runs read-only. The same key signs both Sepolia and mainnet writes; the wallet must own the parent name on the target network. |
+| `BASE_SEPOLIA_RPC_URL` | Used by `set-base-primary --network=base-sepolia`. Defaults to `https://sepolia.base.org`. |
+| `BASE_SEPOLIA_PRIVATE_KEY` | Used by `set-base-primary --network=base-sepolia` to sign the ERC-191 message authorising the L2ReverseRegistrar. Must be the deployer (owner) of the demo proxy. |
 | `BASE_SEPOLIA_REVERSE_REGISTRAR` | Defaults to `0x00000BeEF055f7934784D6d81b6BC86665630dbA`. Override only if ENS deploys a new address. |
+| `BASE_MAINNET_RPC_URL` | Used by `set-base-primary --network=base-mainnet`. Falls back to `RPC_URL_BASE_MAINNET` or `RPC_URL` if unset. |
+| `BASE_MAINNET_PRIVATE_KEY` | Used by `set-base-primary --network=base-mainnet`. Falls back to `ENS_REGISTRAR_PRIVATE_KEY` or `DEPLOYER_PRIVATE_KEY` if unset. |
 
 > The committed [`.env.example`](.env.example) still lists `GROQ_API_KEY`, `APIFY_API_KEY`, `SPACECOMPUTER_API_KEY`, `SWARM_BEE_URL`, and `SWARM_POSTAGE_STAMP`. None of those are read by current code — Swarm now publishes to `bzz.limo` with `NULL_STAMP`. The example file is overdue for a clean-up.
 
@@ -333,7 +364,9 @@ ENS — read at agent boot and consumed by the `ens:*` scripts:
 | Variable | Purpose |
 | --- | --- |
 | `SWARM_FEED_URL` | If set, the dashboard fetches the latest alert from this Swarm feed URL on load. Empty disables Swarm and falls back to local files / seed / mock. |
-| `SEPOLIA_RPC_URL` | Server-side only. Powers the live ENS lookups for the agent identity card and per-alert reputation panels. Without it, those panels degrade gracefully and the dashboard falls back to `NEXT_PUBLIC_DEMO_PROXY_BASE_SEPOLIA` for the revoke flow. |
+| `VIGIL_ENS_NETWORK` | `mainnet` (default) or `sepolia`. Picks which ENS parent the dashboard resolves identity + reputation against. **Frontend defaults to `mainnet`** (production); set to `sepolia` for the dev / legacy parent. |
+| `MAINNET_RPC_URL` | Server-side only. Required when `VIGIL_ENS_NETWORK=mainnet` (the default). Powers the live ENS lookups for the agent identity card and per-alert reputation panels against `vigilbot.eth`. |
+| `SEPOLIA_RPC_URL` | Server-side only. Required when `VIGIL_ENS_NETWORK=sepolia`. Powers the live ENS lookups against `vigil.eth`. Without an RPC for the active network, the panels degrade gracefully and the dashboard falls back to `NEXT_PUBLIC_DEMO_PROXY_BASE_SEPOLIA` for the revoke flow. |
 | `OPENAI_API_KEY` | Powers the per-alert chat panel (`gpt-4o-mini`) via the Vercel AI SDK. |
 | `NEXT_PUBLIC_DEMO_WALLET` | Address whose allowance the dashboard reads to decide whether to show the revoke banner. |
 | `NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY` | **Testnet demo only.** Embedded in the frontend bundle so the revoke button can sign `approve(spender, 0)` without a wallet popup. Anyone with devtools can read it — use a dedicated key that holds nothing else. |
@@ -345,11 +378,12 @@ ENS — read at agent boot and consumed by the `ens:*` scripts:
 
 | Variable | Purpose |
 | --- | --- |
-| `RPC_URL` | Base Sepolia RPC. Match the agent's RPC if you want Vigil's watcher to see the deploy. |
-| `DEPLOYER_PRIVATE_KEY` | Funded Base Sepolia EOA used to deploy V1, V2, and the proxy. |
-| `ETHERSCAN_API_KEY` | Etherscan v2 multichain key for Basescan verification (Sourcify needs no key). |
-| `DEMO_WALLET_PRIVATE_KEY` | Optional — only required by `seed-demo-wallet`. Funded Base Sepolia EOA whose approval the revoke flow targets. |
-| `DEMO_SPENDER_ADDRESS` | Optional — only required by `seed-demo-wallet`. Address that gets pre-approved for `MaxUint256`. |
+| `RPC_URL` | Base Sepolia RPC. Used by every `npm run *` script without the `:mainnet` suffix. |
+| `RPC_URL_BASE_MAINNET` | Base mainnet RPC. Used by every `npm run *:mainnet` variant (`deploy:mainnet`, `upgrade:mainnet`, `demo-cycle:mainnet`, `cycle:mainnet`). |
+| `DEPLOYER_PRIVATE_KEY` | Funded EOA used to deploy V1, V2, and the proxy. The same key works on both networks; fund it on whichever you target. |
+| `ETHERSCAN_API_KEY` | Etherscan v2 multichain key — one key covers Base Sepolia and Base mainnet (Sourcify needs no key). |
+| `DEMO_WALLET_PRIVATE_KEY` | Optional — only required by `seed-demo-wallet[:mainnet]`. Funded EOA whose approval the revoke flow targets. |
+| `DEMO_SPENDER_ADDRESS` | Optional — only required by `seed-demo-wallet[:mainnet]`. Address that gets pre-approved for `MaxUint256`. |
 
 ## Status
 
@@ -366,7 +400,7 @@ What works today:
 - Next.js dashboard with alert list, 24h upgrades chart, severity stats, copy-to-clipboard, per-alert AI chat, **Base/Base-Sepolia chain selector**, and Swarm-feed-URL alert source (cream/navy theme; logo at [`frontend/public/vigil-logo.png`](frontend/public/vigil-logo.png))
 - **Revoke-on-upgrade banner** with dual signing: routes through a connected injected wallet via wagmi when one is present, or falls back to a viem `walletClient` signing with the embedded testnet `NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY` for hands-off demo runs
 - **Optional Connect wallet button** (wagmi `injected()` connector) — the dashboard accepts an external wallet for the revoke flow and shows the demo wallet pill until one is connected
-- **ENS identity + reputation** anchored to `vigil.eth` on Ethereum Sepolia: agent reads `agent.vigil.eth` at boot for capabilities, severity floor, and `vigil.feed` URL invariant; tags every alert with the resolved human name from a JSON cache; writes 4 reputation text records (`vigil.last-severity`, `vigil.last-upgrade-at`, `vigil.last-tx`, `vigil.upgrade-count`) back to the matching target subname after each alert; and publishes the Swarm subscriber URL on ENS for discovery. Six `ens:*` npm scripts (check, register, seed, set-base-primary, sync-feed, resolve) plus a `scripts/swarm/seed-feed.ts` bootstrap cover the full lifecycle. Live deployment recorded in the [ENS section](#ens-identity-vigileth-on-ethereum-sepolia).
+- **ENS identity + reputation** anchored to two parents (production `vigilbot.eth` on Ethereum mainnet, dev `vigil.eth` on Sepolia) — controlled at runtime by `VIGIL_ENS_NETWORK`. Agent reads the active agent subname at boot for capabilities, severity floor, and `vigil.feed` URL invariant; tags every alert with the resolved human name from a JSON cache; writes 4 reputation text records (`vigil.last-severity`, `vigil.last-upgrade-at`, `vigil.last-tx`, `vigil.upgrade-count`) back to the matching target subname after each alert; and publishes the Swarm subscriber URL on ENS for discovery. ENS lifecycle scripts (`check-parent`, `register-parent`, `seed-subnames`, `set-base-primary`, `sync-feed`, `resolve`) all take `--network=sepolia|mainnet`; Base reverse-naming uses `--network=base-sepolia|base-mainnet`. Live deployment recorded in the [ENS section](#ens-identity-vigilboteth-on-mainnet-vigileth-on-sepolia).
 - **Dashboard ENS surfacing**: header card resolves `agent.vigil.eth` live from Sepolia ENS (description, capabilities chips, severity-floor pill, `vigil.feed` URL); each alert card embeds an `EnsReputationPanel` showing `last-severity`, `upgrade-count`, and `last-upgrade-at` for the matching subname. Both fetched server-side via viem in [`frontend/lib/ens.ts`](frontend/lib/ens.ts).
 - **ENSIP-11 demo proxy resolution**: `RevokeBanner` reads the demo proxy address from `demo.vigil.eth`'s `addr[base-sepolia]` record at request time; `NEXT_PUBLIC_DEMO_PROXY_BASE_SEPOLIA` is now a fallback for environments without `SEPOLIA_RPC_URL`.
 - `demo-target/` UUPS proxy with V1/V2 contracts, `deploy` / `upgrade` / `reset` / `cycle` / `seed-demo-wallet` scripts, dual Sourcify + Basescan verification, live-tested on Base Sepolia (run #1 addresses in [`demo-target/DEPLOYMENTS.md`](demo-target/DEPLOYMENTS.md))
