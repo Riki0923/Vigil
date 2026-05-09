@@ -10,6 +10,9 @@
 
 import { createPublicClient, http } from "viem";
 import { mainnet, sepolia } from "viem/chains";
+import { makeLogger } from "./log";
+
+const log = makeLogger("ens");
 
 type EnsNetwork = "mainnet" | "sepolia";
 
@@ -93,7 +96,11 @@ export type TargetReputation = {
 function getClient() {
   const network = getActiveNetwork();
   const rpc = getNetworkRpc(network);
-  if (!rpc) return null;
+  if (!rpc) {
+    const envName = network === "mainnet" ? "ETH_MAINNET_RPC_URL" : "ETH_SEPOLIA_RPC_URL";
+    log.warn(`${envName} unset — ENS resolution disabled (network=${network})`);
+    return null;
+  }
   return createPublicClient({
     chain: network === "mainnet" ? mainnet : sepolia,
     transport: http(rpc),
@@ -130,6 +137,8 @@ async function readText(
 export async function fetchAgentIdentity(
   name: string = getDefaultAgentName(getActiveNetwork()),
 ): Promise<AgentIdentity | null> {
+  const network = getActiveNetwork();
+  log.start(`resolving ${name} on ${network}`);
   const client = getClient();
   if (!client) return null;
   const [description, url, capabilitiesRaw, feed, payment, severityMin] = await Promise.all([
@@ -140,7 +149,11 @@ export async function fetchAgentIdentity(
     readText(client, name, RECORD_KEYS.payment),
     readText(client, name, RECORD_KEYS.severityMin),
   ]);
-  if (description === null && url === null && capabilitiesRaw === null) return null;
+  if (description === null && url === null && capabilitiesRaw === null) {
+    log.warn(`${name} has no records — returning null`);
+    return null;
+  }
+  log.ok(`resolved ${name} (severity-min=${severityMin ?? "unset"})`);
   return {
     name,
     description,
