@@ -153,6 +153,8 @@ export async function processUpgrade(
       message,
       rawData: { oldImplAddress, similarContracts },
     });
+    const swarmUrl = await publishData(unverifiedAlert, block);
+    await sendTelegramAlert(unverifiedAlert, swarmUrl ?? undefined);
     await emitAlert(unverifiedAlert, block.number);
     maybeWriteReputation(proxyName, unverifiedAlert.severity, txHash, unverifiedAlert.timestamp);
     return;
