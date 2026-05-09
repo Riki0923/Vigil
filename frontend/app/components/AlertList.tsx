@@ -25,6 +25,7 @@ import {
 } from "@/lib/format";
 import { CopyButton } from "./CopyButton";
 import { ChatPanel } from "./ChatPanel";
+import { RevokeBanner } from "./RevokeBanner";
 
 export function AlertList({ alerts }: { alerts: Alert[] }) {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -182,6 +183,8 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
               </>
             )}
           </div>
+
+          <RevokeBanner proxyAddress={alert.proxyAddress} alertChainId={alert.chainId} />
 
           {fullPipeline?.functionRiskFlags && fullPipeline.functionRiskFlags.length > 0 && (
             <div className="mt-3 space-y-1">
