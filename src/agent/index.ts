@@ -190,14 +190,11 @@ export async function processUpgrade(
     analysis,
   });
 
-  const batchId = process.env.SWARM_POSTAGE_STAMP;
-  if (batchId) {
-    const [alertHash] = await Promise.all([
-      publishAlert(alert, batchId),
-      publishBlock(block, block.number, batchId),
-    ]);
-    if (alertHash) alert.swarmHash = alertHash;
-  }
+  const [alertHash] = await Promise.all([
+    publishAlert(alert),
+    publishBlock(block, block.number),
+  ]);
+  if (alertHash) alert.swarmHash = alertHash;
 
   await emitAlert(alert, block.number);
 }

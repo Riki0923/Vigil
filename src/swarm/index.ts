@@ -1,7 +1,6 @@
-import { Bee, Topic, PrivateKey } from "@ethersphere/bee-js";
+import { Bee, Topic, PrivateKey, NULL_STAMP, SWARM_GATEWAY_URL } from "@ethersphere/bee-js";
 import { randomBytes } from "crypto";
 
-const SWARM_BEE_URL = process.env.SWARM_BEE_URL ?? "https://bee-api.ethswarm.org";
 const ALERT_TOPIC_NAME = "vigil-alerts";
 
 let bee: Bee;
@@ -10,7 +9,7 @@ let alertTopic: Topic;
 let ownerAddress: string;
 
 export function initSwarm(): void {
-  bee = new Bee(SWARM_BEE_URL);
+  bee = new Bee(SWARM_GATEWAY_URL);
 
   const rawKey = process.env.SWARM_PRIVATE_KEY;
 
@@ -30,19 +29,10 @@ export function initSwarm(): void {
 
   console.log(`[Swarm] Owner address: ${ownerAddress}`);
   console.log(`[Swarm] Alert feed topic: ${ALERT_TOPIC_NAME} (${alertTopic.toHex()})`);
-  console.log(`[Swarm] Bee node: ${SWARM_BEE_URL}`);
+  console.log(`[Swarm] Gateway: ${SWARM_GATEWAY_URL}`);
 }
 
-function checkPostageStamp(): string | null {
-  const stamp = process.env.SWARM_POSTAGE_STAMP;
-  if (!stamp) {
-    console.warn(`[Swarm] Warning: SWARM_POSTAGE_STAMP is not set — cannot publish to Swarm`);
-    return null;
-  }
-  return stamp;
-}
-
-export async function publishAlert(alert: unknown, batchId: string): Promise<string | null> {
+export async function publishAlert(alert: any): Promise<string | null> {
   if (!bee || !privateKey) {
     console.warn(`[Swarm] Not initialised — call initSwarm() first`);
     return null;
@@ -50,26 +40,22 @@ export async function publishAlert(alert: unknown, batchId: string): Promise<str
 
   try {
     const json = JSON.stringify(alert);
-    const uploadResult = await bee.uploadData(batchId, Buffer.from(json));
-    const ref = uploadResult.reference;
+    const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
+    const reference = uploadResult.reference;
 
     const writer = bee.makeFeedWriter(alertTopic, privateKey);
-    await writer.upload(batchId, ref);
+    await writer.uploadReference(NULL_STAMP, reference);
 
-    const hash = ref.toHex();
-    console.log(`[Swarm] Alert published: ${hash}`);
-    return hash;
+    const url = `${SWARM_GATEWAY_URL}/bzz/${reference.toHex()}`;
+    console.log(`[Swarm] Alert published: ${url}`);
+    return url;
   } catch (err) {
     console.error(`[Swarm] Failed to publish alert:`, err);
     return null;
   }
 }
 
-export async function publishBlock(
-  blockData: unknown,
-  blockNumber: number,
-  batchId: string
-): Promise<string | null> {
+export async function publishBlock(blockData: any, blockNumber: number): Promise<string | null> {
   if (!bee || !privateKey) {
     console.warn(`[Swarm] Not initialised — call initSwarm() first`);
     return null;
@@ -77,39 +63,27 @@ export async function publishBlock(
 
   try {
     const json = JSON.stringify(blockData);
-    const uploadResult = await bee.uploadData(batchId, Buffer.from(json));
-    const ref = uploadResult.reference;
+    const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
+    const reference = uploadResult.reference;
 
     const blockTopic = Topic.fromString(`vigil-blocks-${blockNumber}`);
     const writer = bee.makeFeedWriter(blockTopic, privateKey);
-    await writer.upload(batchId, ref);
+    await writer.uploadReference(NULL_STAMP, reference);
 
-    const hash = ref.toHex();
-    console.log(`[Swarm] Block ${blockNumber} archived: ${hash}`);
-    return hash;
+    const url = `${SWARM_GATEWAY_URL}/bzz/${reference.toHex()}`;
+    console.log(`[Swarm] Block ${blockNumber} archived: ${url}`);
+    return url;
   } catch (err) {
     console.error(`[Swarm] Failed to publish block ${blockNumber}:`, err);
     return null;
   }
 }
 
-export async function getAlertFeedManifest(): Promise<string | null> {
-  if (!bee || !privateKey) {
+export function getFeedManifestUrl(): string | null {
+  if (!alertTopic || !ownerAddress) {
     console.warn(`[Swarm] Not initialised — call initSwarm() first`);
     return null;
   }
 
-  const batchId = checkPostageStamp();
-  if (!batchId) return null;
-
-  try {
-    const owner = privateKey.publicKey().address();
-    const manifest = await bee.createFeedManifest(batchId, alertTopic, owner);
-    const hash = manifest.toHex();
-    console.log(`[Swarm] Alert feed manifest (permanent public address): ${hash}`);
-    return hash;
-  } catch (err) {
-    console.error(`[Swarm] Failed to create feed manifest:`, err);
-    return null;
-  }
+  return `${SWARM_GATEWAY_URL}/feeds/${ownerAddress}/${alertTopic.toHex()}`;
 }
