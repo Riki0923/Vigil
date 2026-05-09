@@ -1,46 +1,23 @@
-# How ENS is used in Vigil
+# ENS Integration
 
-Read the **plain English** section first. Technical detail and diagrams below.
+Vigil uses [ENS](https://ens.domains) on Ethereum Sepolia as its identity, configuration, off-chain discovery, multichain target binding, L2 reverse-naming, and reputation log. The agent both reads from and writes to ENS as part of its normal runtime.
 
----
+## Overview
 
-## In plain English (start here)
+Six distinct concerns are served by ENS records on `vigil.eth` and its subnames:
 
-### What is ENS?
+| # | Concern | Records | Subname |
+| --- | --- | --- | --- |
+| 1 | Identity | `description`, `url` | `agent.vigil.eth` |
+| 2 | Runtime configuration | `vigil.capabilities` (JSON), `vigil.severity-min` | `agent.vigil.eth` |
+| 3 | Off-chain feed discovery | `vigil.feed` | `agent.vigil.eth` |
+| 4 | Multichain target binding (ENSIP-11) | `addr[base-sepolia]` | each watched-target subname (e.g. `demo.vigil.eth`) |
+| 5 | L2 reverse name (ENSIP-19) | reverse record on Base Sepolia | the watched contract on Base Sepolia |
+| 6 | Reputation log | `vigil.last-severity`, `vigil.last-upgrade-at`, `vigil.last-tx`, `vigil.upgrade-count` | each watched-target subname, written by the agent |
 
-ENS is the Ethereum Name Service — domain names for Ethereum. A name like `vigil.eth` is owned by a wallet, registered through the ENS Public Resolver, and can carry arbitrary key/value records: addresses, descriptions, links, configuration JSON, anything that fits as a text string.
+The agent reads concerns 1–4 at boot and on each upgrade event, and writes concern 6 after every emitted alert. The dashboard reads identity and reputation server-side at request time.
 
-Most projects use ENS for one job: turn a name into a wallet address. Vigil uses it for six.
-
-### Why ENS matters for Vigil
-
-Vigil is an autonomous agent — it watches Ethereum 24/7 for risky proxy upgrades and publishes alerts. As soon as you have an agent acting on chain, two questions surface:
-
-1. **How does anyone find this agent?** Without ENS: hardcoded URLs, env vars, or a centralized API directory. With ENS: resolve `agent.vigil.eth` and you get the agent's description, capabilities, the feed where it publishes alerts, and a payment endpoint — no API key, no docs, no registry.
-2. **How does another agent know what Vigil has flagged on a specific protocol?** Without ENS: call a private API, deal with auth, hope it's online. With ENS: resolve `usdc.vigil.eth` and read the latest severity, the upgrade count, the last transaction. Already on chain, queryable from anywhere.
-
-ENS is Vigil's **identity + configuration + discovery layer + audit log** — all the same names, all on chain.
-
-### The clever bit: read AND write
-
-Most ENS-for-agent uses only *read*. They register a name, put metadata in it, that's it.
-
-Vigil **reads ENS at boot AND writes back to ENS after every alert.** Four text records on the target's subname update each time the agent detects an upgrade: last severity, last transaction, last upgrade time, total upgrade count. The bidirectional pattern turns ENS itself into a live, on-chain reputation log — any other service in the ecosystem can query it without permission, without an API, without trust.
-
-### The five ENS jobs in one breath
-
-- **Identity** — `agent.vigil.eth` carries `description` and `url`.
-- **Runtime configuration** — the same subname carries `vigil.capabilities` (JSON) and `vigil.severity-min` (the floor that gates which alerts the agent emits).
-- **Off-chain discovery** — `vigil.feed` on `agent.vigil.eth` holds the Swarm subscriber URL.
-- **Multichain target binding (ENSIP-11)** — `demo.vigil.eth` carries `addr[base-sepolia]` (coin type `2147567180`), pointing the agent at a Base address while the name itself lives on Sepolia.
-- **L2 reverse naming (ENSIP-19)** — `demo.vigil.eth` is set as the primary name for the demo proxy on Base Sepolia, so block explorers display the human name instead of bare hex.
-- **Live reputation log** — `vigil.last-severity`, `vigil.last-upgrade-at`, `vigil.last-tx`, `vigil.upgrade-count` on each target subname, written by the agent after every alert.
-
----
-
-## Now the technical details
-
-## The whole thing in one picture
+## Architecture
 
 ```text
 ┌──────────────────────────────────────────────────────────┐
@@ -48,7 +25,6 @@ Vigil **reads ENS at boot AND writes back to ENS after every alert.** Four text 
 │                                                          │
 │   ┌────────────────────┐    ┌─────────────────────┐      │
 │   │  agent.vigil.eth   │    │   demo.vigil.eth    │      │
-│   │  (the agent)       │    │   (a watched proxy) │      │
 │   │                    │    │                     │      │
 │   │  description       │    │  description        │      │
 │   │  url               │    │  vigil.kind         │      │
@@ -59,144 +35,171 @@ Vigil **reads ENS at boot AND writes back to ENS after every alert.** Four text 
 │   │                    │    │  vigil.upgrade-count│      │
 │   └────────▲───────────┘    └─────────▲───────────┘      │
 └────────────┼──────────────────────────┼──────────────────┘
-             │ READ at boot             │ WRITE after every
-             │                          │ alert (4 setText)
+             │ READ at boot             │ WRITE 4× per alert
+             │                          │ (setText)
              │                          │
-       ┌─────┴──────────────────────────┴─────┐
-       │            VIGIL AGENT                │
-       │   src/ens/{reader, writer, cache}     │
-       └──────────────────────────────────────┘
+       ┌─────┴──────────────────────────┴────────┐
+       │                Vigil Agent              │
+       │     src/ens/{reader, writer, cache}     │
+       └─────────────────────────────────────────┘
                        │
-                       │ alerts +
-                       │ resolved names
+                       │ alerts + resolved names
                        ▼
        ┌──────────────────────────────────────┐
-       │      DASHBOARD (Next.js)              │
-       │   frontend/lib/ens.ts (viem)          │
-       │                                       │
+       │           Dashboard (Next.js)        │
+       │       frontend/lib/ens.ts (viem)     │
+       │                                      │
        │   reads agent.vigil.eth → identity   │
        │   reads target subname  → reputation │
        └──────────────────────────────────────┘
 ```
 
-**The pattern:** ENS is the single source of truth. The agent reads from it, writes to it. The dashboard reads from it. Subscribers read from it. No separate database, no API, no registry.
+ENS is the single source of truth for these concerns. Subscribers and downstream tools read from ENS without coordination with Vigil's infrastructure.
 
-## Subname records reference
+### ENSIP mechanisms in use
 
-| Subname | Purpose | Records |
+- **ENSIP-5 text records.** All `description`, `url`, and `vigil.*` keys are plain text records on the resolver. The dashboard reads them via viem's `getEnsText`; the agent reads them via ethers' `Resolver.getText`.
+- **ENSIP-11 multichain address records.** Watched-target subnames carry an `addr` typed for the Base Sepolia coin type (`0x80000000 | 84532 = 2147567180`). A name resolved on Sepolia returns a Base Sepolia address; the resolution lives entirely on Sepolia regardless of where the resolved address operates.
+- **ENSIP-19 L2 reverse names.** The watched contract on Base Sepolia has its primary name set to the target subname via the L2 reverse registrar. For `OwnableUpgradeable` contracts (such as the demo proxy), the call uses `setNameForOwnableWithSignature` — the contract owner's ERC-191 signature authorizes the registrar, with no modification to the watched contract required.
+
+## Subname Records Reference
+
+### Agent identity (`agent.vigil.eth`)
+
+| Record | Type | Description |
 | --- | --- | --- |
-| `agent.vigil.eth` | Agent identity. Read at boot. | `description`, `url`, `vigil.capabilities` (JSON), `vigil.severity-min`, `vigil.feed`, `vigil.payment` |
-| `demo.vigil.eth` | A watched proxy contract, pointed at Base Sepolia by ENSIP-11. | `description`, `vigil.kind`, `addr[base-sepolia]`, plus the four reputation records |
-| `<protocol>.vigil.eth` | Any other watched contract. | Same shape as `demo.vigil.eth` |
+| `description` | text | Human-readable agent description. Surfaced in the dashboard identity card. |
+| `url` | text | Project URL. Surfaced in the dashboard identity card. |
+| `vigil.capabilities` | text (JSON) | `{ watch: string[], chains: string[], output: string[] }`. Read at boot and logged. |
+| `vigil.severity-min` | text | One of `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`. Severity floor applied to every alert before publication. |
+| `vigil.feed` | text | Public Swarm feed URL where alerts are published. Discovered by subscribers. |
+| `vigil.payment` | text | Optional payment endpoint for paid subscribers. Surfaced in the dashboard. |
 
-The reputation records on every target subname:
+### Watched targets (`<protocol>.vigil.eth`)
 
-| Record | Set by | Meaning |
+| Record | Type | Description |
 | --- | --- | --- |
-| `vigil.last-severity` | Agent, after every alert | Most recent severity emitted for this target (`LOW \| MEDIUM \| HIGH \| CRITICAL`) |
-| `vigil.last-upgrade-at` | Agent, after every alert | ISO-8601 timestamp of the most recent alert |
-| `vigil.last-tx` | Agent, after every alert | Tx hash of the upgrade that triggered the alert |
-| `vigil.upgrade-count` | Agent, after every alert | Monotonic counter, read-modify-incremented in [`src/ens/writer.ts`](../../src/ens/writer.ts) |
+| `description` | text | Human-readable target description. |
+| `vigil.kind` | text | Target classification, e.g. `demo-proxy`, `lending`, `dex`. Surfaced as a chip in the reputation panel. |
+| `addr[base-sepolia]` | ENSIP-11 addr | Address of the watched contract on Base Sepolia. The ENSIP-11 coin type is `2147567180`. |
+| `vigil.last-severity` | text | Severity of the most recent alert: `LOW \| MEDIUM \| HIGH \| CRITICAL`. Written by the agent after every alert. |
+| `vigil.last-upgrade-at` | text | ISO-8601 timestamp of the most recent alert. Written by the agent. |
+| `vigil.last-tx` | text | Transaction hash that triggered the most recent alert. Written by the agent. |
+| `vigil.upgrade-count` | text (numeric) | Monotonic counter of total alerts emitted for this target. Read-modify-incremented in [`src/ens/writer.ts`](../../src/ens/writer.ts). |
 
-## Three ENS mechanisms doing the work
+## Data Flow
 
-- **ENSIP-5 text records.** All the `description`, `url`, and `vigil.*` keys are plain text records on the resolver. The dashboard reads them via viem's `getEnsText`; the agent reads them via ethers' `Resolver.getText`.
-- **ENSIP-11 multichain address records.** `demo.vigil.eth` carries an `addr` typed for the Base Sepolia coin type (`0x80000000 | 84532 = 2147567180`). The frontend resolves the name on Sepolia and renders Base Sepolia state — one name, two chains, no env-var hardcoding.
-- **ENSIP-19 L2 reverse names.** The demo proxy on Base Sepolia has its primary name set to `demo.vigil.eth` via the L2 reverse registrar. Because the proxy is `OwnableUpgradeable`, the call uses `setNameForOwnableWithSignature` — the deployer wallet's ERC-191 signature authorizes the registrar to set the name on the proxy's behalf, with no contract change required.
-
-## How the data flows
+### Boot (once per agent process)
 
 ```text
-1 — AGENT BOOT (once per process)
-    Agent ──► ENS Sepolia: read agent.vigil.eth
-    ENS   ──► identity + vigil.severity-min + vigil.feed
-    Agent: verifies vigil.feed matches getCurrentFeedUrl();
-           warns if stale
-
-2 — UPGRADE DETECTED (per event)
-    Chain ──► Agent: Upgraded(0x6595…)
-    Agent: cached lookup proxyAddress → "demo.vigil.eth"
-    Agent: diff + score → CRITICAL
-    Agent: severity ≥ floor? if yes, continue
-    Agent ──► ENS Sepolia: 4 setText calls on demo.vigil.eth
-                           (last-severity, last-upgrade-at,
-                            last-tx, upgrade-count++)
-
-3 — DASHBOARD PAGE LOAD (any user)
-    Dashboard ──► ENS Sepolia (server-side via viem):
-                  fetchAgentIdentity("agent.vigil.eth")
-                  fetchTargetReputations([proxy names from alerts])
-    ENS       ──► records → AgentIdentityCard + EnsReputationPanel
-
-4 — SUBSCRIBER (any external service)
-    Subscriber ──► ENS Sepolia: resolve agent.vigil.eth → vigil.feed
-    Subscriber ──► resolve usdc.vigil.eth   → vigil.last-severity
-    No API key, no auth, no Vigil-controlled endpoint involved.
+Agent ──► ENS Sepolia: read agent.vigil.eth (six text records)
+ENS   ──► identity, capabilities, severity floor, vigil.feed, vigil.payment
+Agent: applies severity floor; loads name cache from data/ens-targets.json
 ```
 
-## Cheat sheet
-
-| Module | Purpose |
-| --- | --- |
-| [`src/ens/client.ts`](../../src/ens/client.ts) | Sepolia provider/signer wiring, ENSIP-11 coin type helpers |
-| [`src/ens/abi.ts`](../../src/ens/abi.ts) | Minimal ABIs for ENS Registry, Resolver, NameWrapper, L2ReverseRegistrar |
-| [`src/ens/records.ts`](../../src/ens/records.ts) | Typed record key constants + parsers for capabilities and severity |
-| [`src/ens/reader.ts`](../../src/ens/reader.ts) | `resolveAgentConfig`, `resolveTargetConfig`, `isNameRegistered` |
-| [`src/ens/writer.ts`](../../src/ens/writer.ts) | `updateTargetReputation` — 4 `setText` calls per alert |
-| [`src/ens/cache.ts`](../../src/ens/cache.ts) | `data/ens-targets.json` — address → name lookups for alert tagging |
-| [`frontend/lib/ens.ts`](../../frontend/lib/ens.ts) | viem-based reader for the dashboard (`fetchAgentIdentity`, `fetchTargetReputation`) |
-
-| Operational script | Purpose |
-| --- | --- |
-| `npm run ens:check` | Wallet balance + name availability + price |
-| `npm run ens:register` | Commit-reveal + native NameWrapper wrap of a parent name |
-| `npm run ens:seed` | Create subnames and write initial records |
-| `npm run ens:sync-feed` | Publish the agent's Swarm feed URL to `agent.vigil.eth` as `vigil.feed` |
-| `npm run ens:set-base-primary` | Set the L2 reverse record on Base Sepolia for the demo proxy |
-| `npm run ens:resolve <name>` | Read every text record + ENSIP-11 addr — used as the verification command throughout |
-
-## Why removing ENS breaks the pipeline
+### Upgrade detection (per event)
 
 ```text
-┌──────────────────────────────────────────────────────────────────┐
-│  ENS turned off  →   Visible damage                              │
-├──────────────────────────────────────────────────────────────────┤
-│  agent.vigil.eth →   severity floor disappears, every alert      │
-│  unreachable         publishes regardless of priority            │
-│                                                                  │
-│  Address cache   →   alerts render bare hex in console + UI      │
-│  not populated                                                   │
-│                                                                  │
-│  No vigil.feed   →   subscribers can't find where to read alerts │
-│                                                                  │
-│  No reputation   →   `resolve <protocol>.vigil.eth` returns      │
-│  writeback           nothing — no agent-to-agent reputation log  │
-│                                                                  │
-│  No ENSIP-19     →   block explorers show 0x6595… instead of     │
-│  reverse             demo.vigil.eth                              │
-│                                                                  │
-│  No ENSIP-11     →   the dashboard's revoke flow falls back to   │
-│                      a hardcoded env var instead of resolving    │
-│                      the proxy address from ENS                  │
-└──────────────────────────────────────────────────────────────────┘
+Chain     ──► Agent: Upgraded(<address>)
+Agent: cached lookup proxyAddress → "<protocol>.vigil.eth"
+Agent: structural diff + AI analysis → severity
+Agent: severity ≥ floor? if yes, publish alert
+Agent     ──► ENS Sepolia: 4 setText calls on <protocol>.vigil.eth
+              (last-severity, last-upgrade-at, last-tx, upgrade-count++)
 ```
 
-The agent's boot log literally prints these states (`[Vigil/ENS] Alert severity floor: none (all alerts emitted)`), so the "removing ENS visibly breaks the product" claim is verifiable from the logs alone.
+### Dashboard page load
 
-## Verify any of this in 30 seconds
+```text
+Dashboard ──► ENS Sepolia (server-side, viem):
+              fetchAgentIdentity("agent.vigil.eth")
+              fetchTargetReputations([names from current alerts])
+ENS       ──► records → AgentIdentityCard + EnsReputationPanel
+```
+
+### External subscriber
+
+```text
+Subscriber ──► ENS Sepolia: resolve agent.vigil.eth → vigil.feed
+Subscriber ──► resolve <protocol>.vigil.eth → vigil.last-severity
+```
+
+No Vigil-controlled endpoint is involved.
+
+## Configuration
+
+### Environment variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `SEPOLIA_RPC_URL` | Yes (for full functionality) | Ethereum Sepolia JSON-RPC endpoint. Used for both reads (resolver text/addr) and writes (reputation `setText` transactions). When unset, the agent runs in legacy mode: no severity floor, no name tagging, no reputation writes. |
+| `ENS_REGISTRAR_PRIVATE_KEY` | For write operations only | Wallet that owns `vigil.eth` on Sepolia. Used by the agent for reputation writes and by the operational scripts for subname creation and record updates. |
+| `ENS_PARENT_NAME` | No (default `vigil.eth`) | Override for the parent name. |
+
+### File-based configuration
+
+| File | Purpose |
+| --- | --- |
+| `data/ens-targets.json` | Map from contract address to ENS name. Populated by the seed script and read by the agent on boot for alert tagging. |
+
+## Module Reference
+
+### Backend (`src/ens/`)
+
+| Module | Exports |
+| --- | --- |
+| [`client.ts`](../../src/ens/client.ts) | Sepolia provider/signer wiring, ENSIP-11 coin type helpers. |
+| [`abi.ts`](../../src/ens/abi.ts) | Minimal ABIs for the ENS Registry, public Resolver, NameWrapper, and L2 ReverseRegistrar. |
+| [`records.ts`](../../src/ens/records.ts) | Typed record key constants and parsers for `vigil.capabilities` and `vigil.severity-min`. |
+| [`reader.ts`](../../src/ens/reader.ts) | `resolveAgentConfig`, `resolveTargetConfig`, `isNameRegistered`. |
+| [`writer.ts`](../../src/ens/writer.ts) | `updateTargetReputation` — performs the four `setText` calls per alert. |
+| [`cache.ts`](../../src/ens/cache.ts) | Address-to-name lookup backed by `data/ens-targets.json`. |
+
+### Frontend (`frontend/lib/ens.ts`)
+
+| Function | Returns | Description |
+| --- | --- | --- |
+| `fetchAgentIdentity(name)` | `Promise<AgentIdentity>` | Reads the six identity records on `agent.vigil.eth` server-side via viem. |
+| `fetchTargetReputation(name)` | `Promise<TargetReputation>` | Reads description, kind, ENSIP-11 addr, and the four reputation records for one target. |
+| `fetchTargetReputations(names)` | `Promise<TargetReputation[]>` | Batch variant for the dashboard's per-alert reputation panels. |
+
+## Operational Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run ens:check` | Confirms wallet balance, name availability, and current price for the parent registration. |
+| `npm run ens:register` | Performs the commit-reveal flow plus native NameWrapper wrap for the parent name. |
+| `npm run ens:seed` | Creates the agent and target subnames and writes initial records (`description`, `url`, `vigil.capabilities`, `vigil.severity-min`, ENSIP-11 addr). |
+| `npm run ens:sync-feed` | Writes the current Swarm feed URL to `agent.vigil.eth` as `vigil.feed`. Run after pinning a new `SWARM_PRIVATE_KEY`. |
+| `npm run ens:set-base-primary` | Submits the ENSIP-19 reverse record on Base Sepolia for a watched proxy. |
+| `npm run ens:resolve <name>` | Reads every text record and the ENSIP-11 addr for a name. Used for verification. |
+
+## Failure Modes
+
+| Condition | Effect | Remediation |
+| --- | --- | --- |
+| `SEPOLIA_RPC_URL` unset | Agent runs in legacy mode: no severity floor (every alert publishes), no proxy-name tagging on alerts, no reputation writeback. | Set `SEPOLIA_RPC_URL`. |
+| `agent.vigil.eth` unreachable at boot | Severity floor and `vigil.feed` advertisement are not applied; agent logs a warning and continues. | Verify the resolver and the records via `npm run ens:resolve agent.vigil.eth`. |
+| `data/ens-targets.json` missing or stale | Alerts emit with bare hex addresses instead of human names. | Run `npm run ens:seed` to repopulate. |
+| `vigil.feed` not published | Subscribers cannot discover the agent's feed URL. | Run `npm run ens:sync-feed`. |
+| ENSIP-19 reverse not set on a watched contract | Block explorers show bare hex on Base Sepolia. | Run `npm run ens:set-base-primary`. |
+| `ENS_REGISTRAR_PRIVATE_KEY` unset | Reputation `setText` calls are skipped. The agent logs a warning and otherwise operates normally. | Provide the private key for the wallet that owns the parent name. |
+
+## Verification
 
 ```bash
-npm run ens:resolve agent.vigil.eth   # → 6 records, all live
-npm run ens:resolve demo.vigil.eth    # → reputation + addr
-cd frontend && npm run dev            # → AgentIdentityCard + ENS Reputation Panel
+npm run ens:resolve agent.vigil.eth     # six records on the agent identity
+npm run ens:resolve demo.vigil.eth      # ENSIP-11 addr + reputation records
+
+cd frontend && npm run dev              # dashboard surfaces both
 ```
 
-Or open `https://app.ens.domains/agent.vigil.eth?network=sepolia` in any browser.
+Live ENS app view: `https://app.ens.domains/agent.vigil.eth?network=sepolia`.
 
-## TL;DR
+## References
 
-1. **The agent's runtime config lives in ENS.** `agent.vigil.eth` carries severity floor + capabilities + feed URL — read at boot, gates every alert.
-2. **The agent writes back to ENS after every alert.** Four text records per target subname turn ENS into a live reputation log.
-3. **The dashboard renders both.** `AgentIdentityCard` reads `agent.vigil.eth`. `EnsReputationPanel` reads the target subname. Both server-side via viem against Sepolia.
-4. **The dashboard's runtime addresses come from ENS, not env vars.** The demo proxy address resolves through `addr[base-sepolia]` on `demo.vigil.eth` (ENSIP-11). `NEXT_PUBLIC_DEMO_PROXY_BASE_SEPOLIA` survives only as a fallback when `SEPOLIA_RPC_URL` is unset.
-5. **Block explorers display the human name.** ENSIP-19 reverse on the proxy via owner-signed authorization — no contract change.
+- [ENS documentation](https://docs.ens.domains/)
+- [ENSIP-5: Text Records](https://docs.ens.domains/ensip/5)
+- [ENSIP-11: Multichain Address Resolution](https://docs.ens.domains/ensip/11)
+- [ENSIP-19: L2 Reverse Resolvers](https://docs.ens.domains/ensip/19)
+- [SLIP-44 coin type registry](https://github.com/satoshilabs/slips/blob/master/slip-0044.md)
