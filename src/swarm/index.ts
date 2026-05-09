@@ -78,13 +78,12 @@ export async function publishAlert(alert: any): Promise<string | null> {
     const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
     const reference = uploadResult.reference;
 
-    const encoder = new TextEncoder();
     currentManifest.addFork(
-      encoder.encode(`/alerts/${alert.id}`),
+      `alerts/${alert.id}`,
       reference.toUint8Array(),
-      { "Content-Type": "application/json", Filename: String(alert.id) },
+      { "Content-Type": "application/json", Filename: alert.id },
     );
-    await saveManifest();
+    await saveManifest(); // Ennek mi a címe, ez lesz a manifest, sima hash 
 
     const url = `${BZZ_LIMO}/bytes/${reference.toHex()}`;
     console.log(`[Swarm] Alert published: ${url}`);
@@ -106,13 +105,12 @@ export async function publishBlock(blockData: any, blockNumber: number): Promise
     const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
     const reference = uploadResult.reference;
 
-    const encoder = new TextEncoder();
     currentManifest.addFork(
-      encoder.encode(`/blocks/${blockNumber}`),
+      `blocks/${blockNumber}`,
       reference.toUint8Array(),
       { "Content-Type": "application/json", Filename: String(blockNumber) },
     );
-    await saveManifest();
+    await saveManifest(); // űj 
 
     const url = `${BZZ_LIMO}/bytes/${reference.toHex()}`;
     console.log(`[Swarm] Block ${blockNumber} archived: ${url}`);
