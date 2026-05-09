@@ -1,22 +1,29 @@
-// Registers vigil.eth on Ethereum Sepolia via the ETHRegistrarController.
-// Uses commit-reveal: commit → wait MIN_COMMITMENT_AGE (60s) → register.
-// The registration call wraps the name in NameWrapper as part of the same tx
-// (the ENS Sepolia controller's `register` integrates wrapping natively).
+// Registers the parent ENS name (vigil.eth on Sepolia, vigilbot.eth on mainnet)
+// via the ETHRegistrarController. Uses commit-reveal: commit → wait
+// MIN_COMMITMENT_AGE (60s) → register. The register call wraps the name in
+// NameWrapper as part of the same tx.
 //
-// Prerequisites: SEPOLIA_RPC_URL, ENS_REGISTRAR_PRIVATE_KEY, wallet funded with
-// Sepolia ETH > registration cost + gas. Run check-parent.ts first.
+// Prerequisites: ENS_REGISTRAR_PRIVATE_KEY funded with ETH > registration + gas.
+//   Sepolia: SEPOLIA_RPC_URL
+//   Mainnet: MAINNET_RPC_URL
 //
-// Usage: tsx scripts/ens/register-parent.ts
+// Usage:
+//   tsx scripts/ens/register-parent.ts                              (sepolia, vigil.eth)
+//   tsx scripts/ens/register-parent.ts --network=mainnet            (mainnet, vigilbot.eth)
+//   tsx scripts/ens/register-parent.ts --network=mainnet --name=foo.eth
 
 import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 
-import { ENS_SEPOLIA, getSepoliaProvider, getSepoliaSigner } from "../../src/ens/index.js";
+import {
+  getEnsContracts,
+  getEnsProvider,
+  getEnsSigner,
+  type EnsNetwork,
+} from "../../src/ens/index.js";
 
 dotenv.config();
 
-const PARENT_NAME = process.env.VIGIL_PARENT_ENS_NAME ?? "vigil.eth";
-const LABEL = PARENT_NAME.replace(/\.eth$/, "");
 const REGISTRATION_DURATION_SECS = 31_557_600; // 365.25 days
 const COMMITMENT_WAIT_BUFFER_SECS = 30; // wait minCommitmentAge + this much
 const FUSES = 0;
@@ -36,29 +43,56 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function parseNetworkFlag(): EnsNetwork {
+  const flag = process.argv.find((a) => a.startsWith("--network="));
+  const value = flag ? flag.slice("--network=".length) : "sepolia";
+  if (value !== "sepolia" && value !== "mainnet") {
+    throw new Error(`--network must be "sepolia" or "mainnet" (got "${value}")`);
+  }
+  return value;
+}
+
+function parseNameFlag(network: EnsNetwork): string {
+  const flag = process.argv.find((a) => a.startsWith("--name="));
+  if (flag) {
+    const value = flag.slice("--name=".length);
+    if (value) return value;
+  }
+  if (network === "mainnet") {
+    return process.env.VIGIL_PARENT_ENS_NAME_MAINNET ?? "vigilbot.eth";
+  }
+  return process.env.VIGIL_PARENT_ENS_NAME ?? "vigil.eth";
+}
+
 async function main(): Promise<void> {
-  const provider = getSepoliaProvider();
-  const signer = getSepoliaSigner();
+  const network = parseNetworkFlag();
+  const parentName = parseNameFlag(network);
+  const label = parentName.replace(/\.eth$/, "");
+
+  const provider = getEnsProvider(network);
+  const signer = getEnsSigner(network);
+  const contracts = getEnsContracts(network);
   const owner = await signer.getAddress();
 
   const controller = new ethers.Contract(
-    ENS_SEPOLIA.ethRegistrarController,
+    contracts.ethRegistrarController,
     CONTROLLER_ABI,
     signer,
   );
   const controllerView = controller.connect(provider);
 
+  console.log(`[register] Network:  ${network} (chainId ${contracts.chainId})`);
   console.log(`[register] Owner:    ${owner}`);
-  console.log(`[register] Name:     ${PARENT_NAME}`);
+  console.log(`[register] Name:     ${parentName}`);
   console.log(`[register] Duration: ${REGISTRATION_DURATION_SECS}s (~365 days)`);
 
-  const available = (await controllerView.getFunction("available")(LABEL)) as boolean;
+  const available = (await controllerView.getFunction("available")(label)) as boolean;
   if (!available) {
-    throw new Error(`${PARENT_NAME} is no longer available. Aborting.`);
+    throw new Error(`${parentName} is no longer available. Aborting.`);
   }
 
   const price = (await controllerView.getFunction("rentPrice")(
-    LABEL,
+    label,
     REGISTRATION_DURATION_SECS,
   )) as { base: bigint; premium: bigint };
   const total = price.base + price.premium;
@@ -79,11 +113,11 @@ async function main(): Promise<void> {
   console.log(`[register] Secret:   ${secret}`);
 
   const commitment = (await controllerView.getFunction("makeCommitment")(
-    LABEL,
+    label,
     owner,
     REGISTRATION_DURATION_SECS,
     secret,
-    ENS_SEPOLIA.publicResolver,
+    contracts.publicResolver,
     [], // no initial records (we'll add them via the seed script)
     REVERSE_RECORD,
     FUSES,
@@ -102,7 +136,9 @@ async function main(): Promise<void> {
 
   // Poll the on-chain commitment age — wall-clock can drift from chain time on
   // slow/sparse blocks. Wait until block.timestamp - commit_ts >= minCommitmentAge + buffer.
-  console.log(`[register] Waiting for commit to mature on-chain (minAge ${minAge}s + ${COMMITMENT_WAIT_BUFFER_SECS}s buffer)...`);
+  console.log(
+    `[register] Waiting for commit to mature on-chain (minAge ${minAge}s + ${COMMITMENT_WAIT_BUFFER_SECS}s buffer)...`,
+  );
   while (true) {
     const [latest, commitTs] = await Promise.all([
       provider.getBlock("latest"),
@@ -124,11 +160,11 @@ async function main(): Promise<void> {
   // Step 2: register
   console.log(`[register] Submitting register tx (value=${ethers.formatEther(valueWithBuffer)} ETH)...`);
   const registerTx = await controller.getFunction("register")(
-    LABEL,
+    label,
     owner,
     REGISTRATION_DURATION_SECS,
     secret,
-    ENS_SEPOLIA.publicResolver,
+    contracts.publicResolver,
     [],
     REVERSE_RECORD,
     FUSES,
@@ -138,9 +174,12 @@ async function main(): Promise<void> {
   const receipt = await registerTx.wait();
   console.log(`[register] Confirmed in block ${receipt?.blockNumber}.`);
 
-  console.log(`\n[register] ✅ ${PARENT_NAME} registered + wrapped to ${owner}`);
-  console.log(`[register] Verify: https://app.ens.domains/${PARENT_NAME}?network=sepolia`);
-  console.log(`[register] Next:   npm run ens:seed`);
+  console.log(`\n[register] ✅ ${parentName} registered + wrapped to ${owner}`);
+  const explorerNet = network === "mainnet" ? "mainnet" : "sepolia";
+  console.log(`[register] Verify: https://app.ens.domains/${parentName}?network=${explorerNet}`);
+  console.log(
+    `[register] Next:   tsx scripts/ens/seed-subnames.ts --network=${network}${network === "mainnet" ? ` --name=${parentName}` : ""}`,
+  );
 }
 
 main().catch((err) => {

@@ -1,17 +1,23 @@
-// Pre-flight check before registering vigil.eth on Ethereum Sepolia.
-// Reports: wallet address, Sepolia ETH balance, name availability, registration price.
+// Pre-flight check before registering the parent ENS name.
+// Reports: wallet address, balance, name availability, registration price.
 //
-// Usage: tsx scripts/ens/check-parent.ts
+// Usage:
+//   tsx scripts/ens/check-parent.ts                              (defaults: sepolia, vigil.eth)
+//   tsx scripts/ens/check-parent.ts --network=mainnet            (defaults to vigilbot.eth)
+//   tsx scripts/ens/check-parent.ts --network=mainnet --name=foo.eth
 
 import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 
-import { ENS_SEPOLIA, getSepoliaProvider, getSepoliaSigner } from "../../src/ens/index.js";
+import {
+  getEnsContracts,
+  getEnsProvider,
+  getEnsSigner,
+  type EnsNetwork,
+} from "../../src/ens/index.js";
 
 dotenv.config();
 
-const PARENT_NAME = process.env.VIGIL_PARENT_ENS_NAME ?? "vigil.eth";
-const LABEL = PARENT_NAME.replace(/\.eth$/, "");
 const REGISTRATION_DURATION_SECS = 31_557_600; // 365.25 days
 
 const CONTROLLER_ABI = [
@@ -19,35 +25,59 @@ const CONTROLLER_ABI = [
   "function rentPrice(string name, uint256 duration) view returns (tuple(uint256 base, uint256 premium))",
 ] as const;
 
+function parseNetworkFlag(): EnsNetwork {
+  const flag = process.argv.find((a) => a.startsWith("--network="));
+  const value = flag ? flag.slice("--network=".length) : "sepolia";
+  if (value !== "sepolia" && value !== "mainnet") {
+    throw new Error(`--network must be "sepolia" or "mainnet" (got "${value}")`);
+  }
+  return value;
+}
+
+function parseNameFlag(network: EnsNetwork): string {
+  const flag = process.argv.find((a) => a.startsWith("--name="));
+  if (flag) {
+    const value = flag.slice("--name=".length);
+    if (value) return value;
+  }
+  if (network === "mainnet") {
+    return process.env.VIGIL_PARENT_ENS_NAME_MAINNET ?? "vigilbot.eth";
+  }
+  return process.env.VIGIL_PARENT_ENS_NAME ?? "vigil.eth";
+}
+
 async function main(): Promise<void> {
-  const provider = getSepoliaProvider();
-  const signer = getSepoliaSigner();
+  const network = parseNetworkFlag();
+  const parentName = parseNameFlag(network);
+  const label = parentName.replace(/\.eth$/, "");
+
+  const provider = getEnsProvider(network);
+  const signer = getEnsSigner(network);
+  const contracts = getEnsContracts(network);
   const address = await signer.getAddress();
 
-  const [balance, network] = await Promise.all([
-    provider.getBalance(address),
-    provider.getNetwork(),
-  ]);
+  const [balance, net] = await Promise.all([provider.getBalance(address), provider.getNetwork()]);
 
-  console.log(`[check] Network:    ${network.name} (chainId ${network.chainId})`);
+  console.log(`[check] Network:    ${network} (chainId ${net.chainId})`);
   console.log(`[check] Wallet:     ${address}`);
-  console.log(`[check] Balance:    ${ethers.formatEther(balance)} ETH (Sepolia)`);
+  console.log(`[check] Balance:    ${ethers.formatEther(balance)} ETH`);
+  console.log(`[check] Name:       ${parentName}`);
 
   const controller = new ethers.Contract(
-    ENS_SEPOLIA.ethRegistrarController,
+    contracts.ethRegistrarController,
     CONTROLLER_ABI,
     provider,
   );
 
-  const available = (await controller.getFunction("available")(LABEL)) as boolean;
-  console.log(`[check] ${PARENT_NAME} available: ${available ? "YES" : "NO (already registered)"}`);
+  const available = (await controller.getFunction("available")(label)) as boolean;
+  console.log(`[check] ${parentName} available: ${available ? "YES" : "NO (already registered)"}`);
 
   if (!available) {
-    console.log(`[check] Pick a different name (set VIGIL_PARENT_ENS_NAME) or use the registered one as-is.`);
+    console.log(`[check] Pick a different name (--name=foo.eth) or use the registered one as-is.`);
     return;
   }
 
-  const price = (await controller.getFunction("rentPrice")(LABEL, REGISTRATION_DURATION_SECS)) as {
+  const price = (await controller.getFunction("rentPrice")(label, REGISTRATION_DURATION_SECS)) as {
     base: bigint;
     premium: bigint;
   };
@@ -61,14 +91,19 @@ async function main(): Promise<void> {
     console.log(
       `[check] ⚠ Wallet has less than the registration cost + 10% gas headroom (${ethers.formatEther(headroom)} ETH).`,
     );
-    console.log(`[check] Fund this address with Sepolia ETH from a faucet:`);
-    console.log(`         https://sepoliafaucet.com  (Alchemy)`);
-    console.log(`         https://www.infura.io/faucet/sepolia`);
-    console.log(`         https://faucet.quicknode.com/ethereum/sepolia`);
+    if (network === "sepolia") {
+      console.log(`[check] Fund this address with Sepolia ETH from a faucet:`);
+      console.log(`         https://sepoliafaucet.com  (Alchemy)`);
+      console.log(`         https://www.infura.io/faucet/sepolia`);
+    } else {
+      console.log(`[check] Fund this address with mainnet ETH before registering.`);
+    }
     return;
   }
 
-  console.log(`[check] ✅ Ready to register. Run: tsx scripts/ens/register-parent.ts`);
+  console.log(
+    `[check] ✅ Ready to register. Run: tsx scripts/ens/register-parent.ts --network=${network}${network === "mainnet" ? ` --name=${parentName}` : ""}`,
+  );
 }
 
 main().catch((err) => {
