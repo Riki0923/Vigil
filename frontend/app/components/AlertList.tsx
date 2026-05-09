@@ -25,9 +25,17 @@ import {
   truncateAddress,
   truncateHash,
 } from "@/lib/format";
+import { demoProxyForChain } from "@/lib/wallet";
 import { CopyButton } from "./CopyButton";
 import { ChatPanel } from "./ChatPanel";
-import { RevokeBanner } from "./RevokeBanner";
+
+function isVigilDemoTarget(alert: Alert): boolean {
+  const chainId = alert.chainId;
+  if (typeof chainId !== "number") return false;
+  const demoProxy = demoProxyForChain(chainId);
+  if (!demoProxy) return false;
+  return alert.proxyAddress.toLowerCase() === demoProxy.toLowerCase();
+}
 
 export function AlertList({
   alerts,
@@ -117,6 +125,9 @@ function AlertCard({
           )}
 
           <div className="mt-2 flex flex-wrap gap-1.5">
+            {isVigilDemoTarget(alert) && (
+              <Tag tone="critical">★ Vigil demo target</Tag>
+            )}
             {!alert.isVerified && <Tag tone="critical">unverified source</Tag>}
             {alert.isVerified && !alert.hasStorageLayout && (
               <Tag tone="warn">no storage layout</Tag>
@@ -211,12 +222,6 @@ function AlertCard({
           </div>
 
           {reputation && <EnsReputationPanel reputation={reputation} />}
-
-          <RevokeBanner
-            proxyAddress={alert.proxyAddress}
-            alertChainId={alert.chainId}
-            ensProxyOverride={reputation?.baseSepoliaAddress ?? null}
-          />
 
           {fullPipeline?.functionRiskFlags && fullPipeline.functionRiskFlags.length > 0 && (
             <div className="mt-3 space-y-1">
