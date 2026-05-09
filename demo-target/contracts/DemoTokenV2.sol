@@ -18,7 +18,7 @@ contract DemoTokenV2 is
     OwnableUpgradeable,
     UUPSUpgradeable
 {
-    string public constant VIGIL_DEMO_BUILD = "2026-05-09T17:00:00Z";
+    string public constant VIGIL_DEMO_BUILD = "2026-05-09T17:05:00Z";
 
     address public emergencyAdmin;
     bool public paused;
