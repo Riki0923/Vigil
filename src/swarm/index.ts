@@ -2,11 +2,15 @@
 // `chain-archive` library; this module just owns the keypair plumbing and
 // the {alert, block} envelope shape Vigil writes for each upgrade.
 
-import { Bee, PrivateKey } from "@ethersphere/bee-js";
+import { Bee, PrivateKey, Topic } from "@ethersphere/bee-js";
 import { randomBytes } from "crypto";
 import { ChainArchive } from "../libs/chain-archive/index.js";
 
 const BZZ_LIMO = "https://bzz.limo";
+// Pinned topic — keeps Vigil's published feed URL stable across the
+// chain-archive extraction. Subscribers find this URL via vigil.feed
+// on agent.vigil.eth; changing the string would break discovery.
+const VIGIL_MANIFEST_TOPIC = Topic.fromString("vigil-manifest");
 
 let archive: ChainArchive | null = null;
 
@@ -28,6 +32,7 @@ export async function initSwarm(): Promise<void> {
   archive = new ChainArchive({
     bee: new Bee(BZZ_LIMO),
     privateKey,
+    topic: VIGIL_MANIFEST_TOPIC,
     gatewayUrl: BZZ_LIMO,
   });
 
