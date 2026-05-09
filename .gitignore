@@ -7,3 +7,4 @@ docs/*
 data/
 demo-target/deployments/
 .claude/*.lock
+.superpowers/
