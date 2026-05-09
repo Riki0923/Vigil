@@ -6,7 +6,11 @@ docs/*
 !docs/integrations/**
 !docs/superpowers/
 !docs/superpowers/**
-data/
+data/*
+# Allow ens-targets.json: required by the Worker on Railway (the watcher reads
+# this on boot to know which proxies to monitor). All other data/* are
+# generated alert outputs and stay ignored.
+!data/ens-targets.json
 demo-target/deployments/
 .claude/*.lock
 .superpowers/
