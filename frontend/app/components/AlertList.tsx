@@ -136,7 +136,10 @@ function AlertCard({
               <Tag tone="info">verified · layout available</Tag>
             )}
             {fullPipeline && isPartialMatch(fullPipeline.matchType) && (
-              <Tag tone="warn">partial match — bytecode modified</Tag>
+              <Tag tone="warn">⚠️ partial match — source matches but metadata differs, which is suspicious</Tag>
+            )}
+            {unverified && unverified.similarContracts.length > 0 && (
+              <Tag tone="info">🔍 Similar to {unverified.similarContracts.length} known contract(s) in Sourcify</Tag>
             )}
             {fullPipeline && isExactMatch(fullPipeline.matchType) && (
               <Tag tone="info">exact match</Tag>
@@ -221,6 +224,20 @@ function AlertCard({
             )}
           </div>
 
+          {fullPipeline?.contractMeta?.creationTxHash && (
+            <p className="mt-1.5 text-xs text-brand-soft">
+              First deployed:{" "}
+              <a
+                href={`https://basescan.org/tx/${fullPipeline.contractMeta.creationTxHash}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono transition-colors hover:text-brand hover:underline"
+              >
+                {fullPipeline.contractMeta.creationTxHash.substring(0, 10)}...
+              </a>
+            </p>
+          )}
+
           {reputation && <EnsReputationPanel reputation={reputation} />}
 
           {fullPipeline?.functionRiskFlags && fullPipeline.functionRiskFlags.length > 0 && (
@@ -271,6 +288,30 @@ function AlertCard({
               </div>
             </details>
           )}
+
+          {(() => {
+            const newsItem = fullPipeline?.apifyEnrichment?.newsResults?.[0];
+            const newsTitle = newsItem?.title ?? newsItem?.organicResults?.[0]?.title;
+            const newsUrl = newsItem?.url ?? newsItem?.organicResults?.[0]?.url;
+            if (!newsTitle) return null;
+            return (
+              <p className="mt-2 text-xs italic text-brand-soft">
+                📰 News:{" "}
+                {newsUrl ? (
+                  <a
+                    href={newsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-brand"
+                  >
+                    {newsTitle}
+                  </a>
+                ) : (
+                  newsTitle
+                )}
+              </p>
+            );
+          })()}
         </div>
       </div>
     </li>

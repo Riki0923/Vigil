@@ -141,6 +141,13 @@ export async function processUpgrade(
       console.log(`[Pipeline] No similar contracts found`);
     }
 
+    const unverifiedAnalysis = {
+      summary: 'Contract source is not verified on Sourcify — cannot assess safety.',
+      explanation: 'Unverified implementations pose a critical risk as their source code cannot be inspected or audited. This upgrade introduced an implementation that has not been publicly verified.',
+      recommendation: 'Do not interact with this proxy until the implementation source is verified on Sourcify.',
+      confidence: 'high' as const,
+    };
+
     const unverifiedAlert = createAlert({
       severity: AlertSeverity.CRITICAL,
       proxyAddress,
@@ -152,6 +159,7 @@ export async function processUpgrade(
       hasStorageLayout: false,
       message,
       rawData: { oldImplAddress, similarContracts },
+      analysis: unverifiedAnalysis,
     });
     const swarmUrl = await publishData(unverifiedAlert, block);
     await sendTelegramAlert(unverifiedAlert, swarmUrl ?? undefined);

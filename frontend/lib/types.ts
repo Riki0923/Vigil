@@ -99,6 +99,12 @@ export type SimilarContract = {
   similarity: number;
 };
 
+export type ApifyEnrichment = {
+  twitterMentions: { text?: string; url?: string }[];
+  newsResults: { title?: string; url?: string; organicResults?: { title?: string; url?: string }[] }[];
+  enrichedAt: string;
+};
+
 export type FullPipelineRawData = {
   storageDiff: DiffResult | null;
   abiDiff: ABIDiff | null;
@@ -106,6 +112,7 @@ export type FullPipelineRawData = {
   matchType: MatchType;
   contractMeta: ContractMeta | null;
   natSpec: NatSpec | null;
+  apifyEnrichment?: ApifyEnrichment;
 };
 
 export type UnverifiedRawData = {
