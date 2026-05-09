@@ -111,6 +111,20 @@ export function AgentIdentityCard({ identity }: { identity: AgentIdentity | null
               </span>
             </div>
           )}
+
+          {identity.payment && (
+            <div className="brand-border-soft mt-2 flex items-center gap-2 rounded-md border bg-white/60 px-3 py-2 text-xs">
+              <span className="text-brand-soft uppercase tracking-wider text-[10px] shrink-0">
+                vigil.payment
+              </span>
+              <span className="font-mono text-brand truncate" title={identity.payment}>
+                {identity.payment}
+              </span>
+              <span className="text-brand-soft ml-auto text-[10px] shrink-0">
+                X402 endpoint, discoverable via ENS
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

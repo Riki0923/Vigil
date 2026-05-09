@@ -21,12 +21,20 @@ type Props = {
 
 export function ChatPanel({ alert, onClose }: Props) {
   const [input, setInput] = useState("");
-  const transport = useRef(
-    new DefaultChatTransport({
-      api: "/api/chat",
-      body: { alertId: alert.id },
-    }),
-  ).current;
+
+  // Lazy useState init keeps a stable transport instance per panel mount.
+  // Using useRef(...).current here trips the react-hooks/refs rule (refs
+  // can't be read during render) AND constructs a fresh transport on every
+  // render even though only the first survives. Lazy useState avoids both.
+  // The parent renders <ChatPanel key={alert.id}/> so the panel remounts
+  // per alert — alert.id is stable for this instance's lifetime.
+  const [transport] = useState(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: { alertId: alert.id },
+      }),
+  );
 
   const { messages, sendMessage, status } = useChat({
     id: alert.id,

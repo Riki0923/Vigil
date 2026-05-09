@@ -39,6 +39,7 @@ export type AgentIdentity = {
   url: string | null;
   capabilities: AgentCapabilities | null;
   feed: string | null;
+  payment: string | null;
   severityMin: string | null;
 };
 
@@ -93,11 +94,12 @@ export async function fetchAgentIdentity(
 ): Promise<AgentIdentity | null> {
   const client = getClient();
   if (!client) return null;
-  const [description, url, capabilitiesRaw, feed, severityMin] = await Promise.all([
+  const [description, url, capabilitiesRaw, feed, payment, severityMin] = await Promise.all([
     readText(client, name, RECORD_KEYS.description),
     readText(client, name, RECORD_KEYS.url),
     readText(client, name, RECORD_KEYS.capabilities),
     readText(client, name, RECORD_KEYS.feed),
+    readText(client, name, RECORD_KEYS.payment),
     readText(client, name, RECORD_KEYS.severityMin),
   ]);
   if (description === null && url === null && capabilitiesRaw === null) return null;
@@ -107,6 +109,7 @@ export async function fetchAgentIdentity(
     url,
     capabilities: parseCapabilities(capabilitiesRaw),
     feed,
+    payment,
     severityMin,
   };
 }
