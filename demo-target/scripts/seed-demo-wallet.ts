@@ -1,8 +1,7 @@
-import { ethers } from "hardhat";
+import hre, { ethers } from "hardhat";
 import * as fs from "fs";
-import * as path from "path";
 
-const DEPLOYMENTS_PATH = path.join(__dirname, "..", "deployments", "base-sepolia.json");
+import { getNetworkPaths } from "./lib/paths";
 
 interface DeploymentRecord {
   proxyAddress: string;
@@ -11,13 +10,16 @@ interface DeploymentRecord {
 }
 
 async function main(): Promise<void> {
-  if (!fs.existsSync(DEPLOYMENTS_PATH)) {
+  const paths = getNetworkPaths(hre);
+  console.log(`[seed] Network:    ${paths.name} (chainId ${paths.chainId})`);
+
+  if (!fs.existsSync(paths.deploymentsPath)) {
     throw new Error(
-      `No deployment record at ${DEPLOYMENTS_PATH}. Run 'npm run deploy' first.`,
+      `No deployment record at ${paths.deploymentsPath}. Run 'npm run deploy${paths.name === "baseMainnet" ? ":mainnet" : ""}' first.`,
     );
   }
 
-  const record: DeploymentRecord = JSON.parse(fs.readFileSync(DEPLOYMENTS_PATH, "utf8"));
+  const record: DeploymentRecord = JSON.parse(fs.readFileSync(paths.deploymentsPath, "utf8"));
   const proxyAddress = record.proxyAddress;
   if (!proxyAddress) throw new Error("No proxyAddress in deployments file.");
 
@@ -42,7 +44,7 @@ async function main(): Promise<void> {
   console.log(`[seed] demoWallet ETH: ${ethers.formatEther(demoBalance)}`);
   if (demoBalance === 0n) {
     throw new Error(
-      `Demo wallet ${demoWallet.address} has 0 ETH on Base Sepolia. Fund it from a faucet first.`,
+      `Demo wallet ${demoWallet.address} has 0 ETH on ${paths.name}. Fund it${paths.name === "baseSepolia" ? " from a faucet" : ""} first.`,
     );
   }
 

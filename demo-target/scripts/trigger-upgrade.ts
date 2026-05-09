@@ -2,12 +2,7 @@ import hre, { ethers, upgrades } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
 
-const DEPLOYMENTS_PATH = path.join(
-  __dirname,
-  "..",
-  "deployments",
-  "base-sepolia.json",
-);
+import { getNetworkPaths } from "./lib/paths";
 
 interface DeploymentRecord {
   proxyAddress: string;
@@ -21,21 +16,24 @@ interface DeploymentRecord {
 }
 
 async function main(): Promise<void> {
-  if (!fs.existsSync(DEPLOYMENTS_PATH)) {
-    console.error(`[trigger-upgrade] No deployments file at ${DEPLOYMENTS_PATH}`);
-    console.error("[trigger-upgrade] Run scripts/deploy-proxy.ts first.");
+  const paths = getNetworkPaths(hre);
+  console.log(`[trigger-upgrade] Network: ${paths.name} (chainId ${paths.chainId})`);
+
+  if (!fs.existsSync(paths.deploymentsPath)) {
+    console.error(`[trigger-upgrade] No deployments file at ${paths.deploymentsPath}`);
+    console.error(`[trigger-upgrade] Run: npx hardhat run scripts/deploy-proxy.ts --network ${paths.name}`);
     process.exit(1);
   }
 
   const record: DeploymentRecord = JSON.parse(
-    fs.readFileSync(DEPLOYMENTS_PATH, "utf8"),
+    fs.readFileSync(paths.deploymentsPath, "utf8"),
   );
 
   if (record.v2ImplAddress) {
     console.log("[trigger-upgrade] Proxy already upgraded to V2:");
     console.log(JSON.stringify(record, null, 2));
     console.log(
-      "[trigger-upgrade] Delete deployments/base-sepolia.json and re-deploy to start over.",
+      `[trigger-upgrade] Delete ${path.relative(process.cwd(), paths.deploymentsPath)} and re-deploy to start over.`,
     );
     return;
   }
@@ -66,10 +64,11 @@ async function main(): Promise<void> {
   record.upgradeTxHash = receipt.hash;
   record.upgradeBlockNumber = receipt.blockNumber;
 
-  fs.writeFileSync(DEPLOYMENTS_PATH, JSON.stringify(record, null, 2));
+  fs.writeFileSync(paths.deploymentsPath, JSON.stringify(record, null, 2));
 
   console.log(`[trigger-upgrade] Tx:     ${record.upgradeTxHash}`);
   console.log(`[trigger-upgrade] Block:  ${record.upgradeBlockNumber}`);
+  console.log(`[trigger-upgrade] Explorer: ${paths.explorerBase}/tx/${record.upgradeTxHash}`);
 
   console.log("[trigger-upgrade] Verifying V2 impl on Sourcify...");
   try {
@@ -81,7 +80,7 @@ async function main(): Promise<void> {
   } catch (err) {
     console.warn("[trigger-upgrade] Sourcify verification failed:", err);
     console.warn(
-      `[trigger-upgrade] Re-run manually: npx hardhat verify --network baseSepolia ${v2ImplAddress}`,
+      `[trigger-upgrade] Re-run manually: npx hardhat verify --network ${paths.name} ${v2ImplAddress}`,
     );
   }
 }

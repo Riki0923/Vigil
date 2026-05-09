@@ -2,11 +2,10 @@ import hre, { ethers, upgrades } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
 
+import { getNetworkPaths } from "./lib/paths";
+
 const DEMO_TARGET_ROOT = path.join(__dirname, "..");
-const REPO_ROOT = path.join(DEMO_TARGET_ROOT, "..");
-const DEPLOYMENTS_PATH = path.join(DEMO_TARGET_ROOT, "deployments", "base-sepolia.json");
 const V2_CONTRACT_PATH = path.join(DEMO_TARGET_ROOT, "contracts", "DemoTokenV2.sol");
-const ALERTS_PATH = path.join(REPO_ROOT, "data", "alerts-base-sepolia.json");
 
 const BUILD_STAMP_REGEX = /string public constant VIGIL_DEMO_BUILD = "[^"]*";/;
 const TARGET_DEMO_BALANCE = ethers.parseEther("100");
@@ -37,10 +36,13 @@ interface DeploymentRecord {
 async function main(): Promise<void> {
   console.log("[demo-cycle] starting…");
 
-  if (!fs.existsSync(DEPLOYMENTS_PATH)) {
-    throw new Error(`No deployment record at ${DEPLOYMENTS_PATH}. Run 'npm run deploy' first.`);
+  const paths = getNetworkPaths(hre);
+  console.log(`[demo-cycle] network:      ${paths.name} (chainId ${paths.chainId})`);
+
+  if (!fs.existsSync(paths.deploymentsPath)) {
+    throw new Error(`No deployment record at ${paths.deploymentsPath}. Run 'npm run deploy${paths.name === "baseMainnet" ? ":mainnet" : ""}' first.`);
   }
-  const record: DeploymentRecord = JSON.parse(fs.readFileSync(DEPLOYMENTS_PATH, "utf8"));
+  const record: DeploymentRecord = JSON.parse(fs.readFileSync(paths.deploymentsPath, "utf8"));
   if (!record.proxyAddress) throw new Error("No proxyAddress in deployments file.");
 
   const demoWalletKey = process.env.DEMO_WALLET_PRIVATE_KEY;
@@ -55,12 +57,12 @@ async function main(): Promise<void> {
   const demoBalance = await ethers.provider.getBalance(demoWallet.address);
   if (demoBalance < MIN_GAS_BALANCE) {
     console.warn(
-      `[demo-cycle] WARN: DEMO_WALLET ETH balance is ${ethers.formatEther(demoBalance)} (< 0.005); approve may run out of gas.`,
+      `[demo-cycle] WARN: DEMO_WALLET ETH balance is ${ethers.formatEther(demoBalance)} (< ${ethers.formatEther(MIN_GAS_BALANCE)}); approve may run out of gas.`,
     );
   }
 
-  if (!fs.existsSync(ALERTS_PATH)) {
-    console.warn(`[demo-cycle] WARN: ${ALERTS_PATH} not found — is the watcher running?`);
+  if (!fs.existsSync(paths.alertsPath)) {
+    console.warn(`[demo-cycle] WARN: ${paths.alertsPath} not found — is the watcher running?`);
   }
 
   console.log(`[demo-cycle] proxy:        ${record.proxyAddress}`);
@@ -101,7 +103,7 @@ async function main(): Promise<void> {
     delete record.upgradedAt;
     delete record.upgradeTxHash;
     delete record.upgradeBlockNumber;
-    fs.writeFileSync(DEPLOYMENTS_PATH, JSON.stringify(record, null, 2));
+    fs.writeFileSync(paths.deploymentsPath, JSON.stringify(record, null, 2));
     console.log(
       `[demo-cycle] archived prior upgrade (now ${record.previousUpgrades.length} in history)`,
     );
@@ -128,7 +130,7 @@ async function main(): Promise<void> {
   record.upgradedAt = new Date().toISOString();
   record.upgradeTxHash = receipt.hash;
   record.upgradeBlockNumber = receipt.blockNumber;
-  fs.writeFileSync(DEPLOYMENTS_PATH, JSON.stringify(record, null, 2));
+  fs.writeFileSync(paths.deploymentsPath, JSON.stringify(record, null, 2));
   console.log(`[demo-cycle] upgrade tx: ${receipt.hash} (block ${receipt.blockNumber})`);
 
   // ── Sourcify verify (best-effort) ────────────────────────────
@@ -139,7 +141,7 @@ async function main(): Promise<void> {
   } catch (err) {
     console.warn("[demo-cycle] WARN: Sourcify verification failed:", err);
     console.warn(
-      `[demo-cycle] Re-run manually: npx hardhat verify --network baseSepolia ${v2ImplAddress}`,
+      `[demo-cycle] Re-run manually: npx hardhat verify --network ${paths.name} ${v2ImplAddress}`,
     );
   }
 
@@ -178,6 +180,7 @@ async function main(): Promise<void> {
   // ── Summary ──────────────────────────────────────────────────
   const allowanceLabel =
     allowance === ethers.MaxUint256 ? "MaxUint256" : allowance.toString();
+  const networkLabel = paths.name === "baseMainnet" ? "Base mainnet" : "Base Sepolia";
   console.log("");
   console.log(`[demo-cycle] proxy:           ${record.proxyAddress}`);
   console.log(`[demo-cycle] new V2 impl:     ${v2ImplAddress}`);
@@ -186,10 +189,10 @@ async function main(): Promise<void> {
   console.log(`[demo-cycle] DEMO_WALLET:     ${demoWallet.address}`);
   console.log(`[demo-cycle] allowance:       ${allowanceLabel}`);
   console.log(
-    "[demo-cycle] modified files:  contracts/DemoTokenV2.sol, deployments/base-sepolia.json",
+    `[demo-cycle] modified files:  contracts/DemoTokenV2.sol, deployments/${paths.slug}.json`,
   );
   console.log(
-    "[demo-cycle] next: open the UI on Base Sepolia, disconnect any wallet, click Revoke.",
+    `[demo-cycle] next: open the UI on ${networkLabel}, disconnect any wallet, click Revoke.`,
   );
 }
 

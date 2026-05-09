@@ -2,15 +2,21 @@
   "name": "vigil-demo-target",
   "version": "1.0.0",
   "private": true,
-  "description": "Upgradeable proxy demo target for Vigil — Base Sepolia",
+  "description": "Upgradeable proxy demo target for Vigil — Base Sepolia + Base mainnet",
   "scripts": {
     "compile": "hardhat compile",
     "deploy": "hardhat run scripts/deploy-proxy.ts --network baseSepolia",
+    "deploy:mainnet": "hardhat run scripts/deploy-proxy.ts --network baseMainnet",
     "upgrade": "hardhat run scripts/trigger-upgrade.ts --network baseSepolia",
+    "upgrade:mainnet": "hardhat run scripts/trigger-upgrade.ts --network baseMainnet",
     "seed-demo-wallet": "hardhat run scripts/seed-demo-wallet.ts --network baseSepolia",
+    "seed-demo-wallet:mainnet": "hardhat run scripts/seed-demo-wallet.ts --network baseMainnet",
     "demo-cycle": "hardhat run scripts/demo-cycle.ts --network baseSepolia",
+    "demo-cycle:mainnet": "hardhat run scripts/demo-cycle.ts --network baseMainnet",
     "reset": "ts-node scripts/reset.ts",
+    "reset:mainnet": "ts-node scripts/reset.ts --network=baseMainnet",
     "cycle": "npm run reset && npm run deploy && npm run upgrade",
+    "cycle:mainnet": "npm run reset:mainnet && npm run deploy:mainnet && npm run upgrade:mainnet",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
