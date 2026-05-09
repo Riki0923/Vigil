@@ -2,7 +2,6 @@ node_modules
 .env
 .swarm-manifest
 docs/*
-!docs/ens-overview.md
 !docs/integrations/
 !docs/integrations/**
 data/

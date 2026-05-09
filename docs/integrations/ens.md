@@ -87,6 +87,57 @@ ENS is the single source of truth for these concerns. Subscribers and downstream
 | `vigil.last-tx` | text | Transaction hash that triggered the most recent alert. Written by the agent. |
 | `vigil.upgrade-count` | text (numeric) | Monotonic counter of total alerts emitted for this target. Read-modify-incremented in [`src/ens/writer.ts`](../../src/ens/writer.ts). |
 
+## Dashboard Surfaces
+
+The dashboard renders ENS records server-side via viem against Sepolia. Two surfaces are user-visible.
+
+### Agent Identity Card (top of dashboard)
+
+```text
+╔══════════════════════════════════════════════════════════════╗
+║  ● AGENT IDENTITY · resolved live from Ethereum Sepolia ENS  ║
+║                                                               ║
+║  agent.vigil.eth                          [view on ENS app ↗]║
+║                                                               ║
+║  Vigil — autonomous proxy upgrade auditor                     ║
+║  https://github.com/Riki0923/Vigil ↗                          ║
+║                                                               ║
+║  SEVERITY FLOOR  [MEDIUM]                                     ║
+║  CAPABILITIES    [watch:proxy-upgrade-eip-1967]               ║
+║                  [chain:base] [chain:base-sepolia]            ║
+║                  [out:swarm-feed] [out:json-file]             ║
+║                                                               ║
+║  VIGIL.FEED      bzz.limo/feeds/0x4b29…/94f6a4… ↗            ║
+║                  subscribers discover via ENS                 ║
+║                                                               ║
+║  VIGIL.PAYMENT   x402-planned:github.com/Riki0923/Vigil      ║
+║                  X402 endpoint (roadmap), discoverable via ENS║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+Source: `fetchAgentIdentity("agent.vigil.eth")` reads the six identity records on `agent.vigil.eth`.
+
+### ENS Reputation Panel (inline on every named alert)
+
+```text
+╔════════════════════════════════════════════════════════════╗
+║ ●  ENS REPUTATION  demo.vigil.eth                          ║
+║    [1 upgrade tracked]  [last CRITICAL]  demo-proxy        ║
+║                                                            ║
+║    ADDR[BASE-SEPOLIA]    0x6595…21AD                       ║
+║    VIGIL.LAST-TX         0x000000…000001 ↗                 ║
+║    VIGIL.LAST-UPGRADE-AT 38m ago                           ║
+║    VIGIL.UPGRADE-COUNT   1                                 ║
+║                                                            ║
+║    resolved live from Sepolia ENS                          ║
+║    written back by the agent after each alert              ║
+║                                                            ║
+║                                       [view on ENS app ↗] ║
+╚════════════════════════════════════════════════════════════╝
+```
+
+Source: `fetchTargetReputations(names)` reads ENSIP-11 addr plus the four `vigil.last-*` reputation records per target. The four reputation records are the bidirectional half of the integration — written by the agent, not seeded once.
+
 ## Data Flow
 
 ### Boot (once per agent process)
