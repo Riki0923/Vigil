@@ -11,8 +11,12 @@ const DATA_DIR = path.join(REPO_ROOT, "data");
 // default-fills missing chainId per file, so an alert that lands in
 // alerts-base-sepolia.json is treated as Base Sepolia even if its chainId
 // field is unset (legacy alerts from before this routing existed).
+//
+// Note: the agent watcher writes Base mainnet alerts to alerts-base-mainnet.json.
+// alerts.json (no chain suffix) is reserved for Kristian's external pipeline output;
+// the frontend merges both so end users see everything regardless of source.
 const FILE_BY_CHAIN: Record<number, string> = {
-  8453: "alerts.json",
+  8453: "alerts-base-mainnet.json",
   84532: "alerts-base-sepolia.json",
 };
 

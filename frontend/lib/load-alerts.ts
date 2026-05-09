@@ -10,7 +10,12 @@ const SWARM_FETCH_TIMEOUT_MS = 5_000;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "../..");
+// Three sources merge into the dashboard:
+//   - alerts.json: Kristian's external pipeline output (chainId defaults to 8453)
+//   - alerts-base-mainnet.json: our watcher's output for Base mainnet upgrades
+//   - alerts-base-sepolia.json: legacy/testing output for Base Sepolia
 const ALERTS_FILE = path.join(REPO_ROOT, "data", "alerts.json");
+const ALERTS_MAINNET_FILE = path.join(REPO_ROOT, "data", "alerts-base-mainnet.json");
 const ALERTS_SEPOLIA_FILE = path.join(REPO_ROOT, "data", "alerts-base-sepolia.json");
 
 const BASE_CHAIN_ID = 8453;
@@ -91,9 +96,10 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
     `[loadAlerts] start — SWARM_FEED_URL=${SWARM_FEED_URL ? "set" : "unset"}`,
   );
 
-  const [swarmLatest, main, sepoliaFile] = await Promise.all([
+  const [swarmLatest, main, mainnetFile, sepoliaFile] = await Promise.all([
     SWARM_FEED_URL ? fetchLatestFromSwarm(SWARM_FEED_URL) : Promise.resolve(null),
     readAlertsFile(ALERTS_FILE, BASE_CHAIN_ID),
+    readAlertsFile(ALERTS_MAINNET_FILE, BASE_CHAIN_ID),
     readAlertsFile(ALERTS_SEPOLIA_FILE, BASE_SEPOLIA_CHAIN_ID),
   ]);
 
@@ -106,6 +112,7 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
   const merged: Alert[] = [];
   if (swarmLatest) merged.push(swarmLatest);
   if (main) merged.push(...main.alerts);
+  if (mainnetFile) merged.push(...mainnetFile.alerts);
   if (sepolia) merged.push(...sepolia.alerts);
 
   const seen = new Set<string>();
@@ -116,7 +123,7 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
   });
 
   console.log(
-    `[loadAlerts] composition — swarm=${swarmLatest ? 1 : 0} mainFile=${main?.alerts.length ?? 0} sepoliaFile=${sepoliaFile?.alerts.length ?? 0} seedFallback=${sepoliaFile ? 0 : seedAlertsBaseSepolia.length} → deduped=${deduped.length}`,
+    `[loadAlerts] composition — swarm=${swarmLatest ? 1 : 0} mainFile=${main?.alerts.length ?? 0} mainnetFile=${mainnetFile?.alerts.length ?? 0} sepoliaFile=${sepoliaFile?.alerts.length ?? 0} seedFallback=${sepoliaFile ? 0 : seedAlertsBaseSepolia.length} → deduped=${deduped.length}`,
   );
 
   if (deduped.length === 0) {
@@ -129,6 +136,7 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
   const latestUpdated = [
     swarmLatest?.timestamp,
     main?.updatedAt,
+    mainnetFile?.updatedAt,
     sepolia?.updatedAt,
   ]
     .filter((v): v is string => Boolean(v))
