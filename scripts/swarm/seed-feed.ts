@@ -9,7 +9,7 @@
 
 import * as dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
-import { initSwarm, publishAlert } from "../../src/swarm/index.js";
+import { initSwarm, publishData } from "../../src/swarm/index.js";
 
 dotenv.config();
 
@@ -37,10 +37,15 @@ async function main(): Promise<void> {
     },
   };
 
+  // publishData expects an alert + block pair. The bootstrap doesn't have a
+  // real block, so we stamp a synthetic one — block.number is what becomes
+  // the manifest path key, so a Date.now() id stays unique across re-runs.
+  const block = { number: Date.now() };
+
   console.log(`[seed-feed] Publishing bootstrap alert id=${alert.id}...`);
-  const url = await publishAlert(alert);
+  const url = await publishData(alert, block);
   if (!url) {
-    throw new Error("publishAlert returned null — check Swarm gateway / postage");
+    throw new Error("publishData returned null — check Swarm gateway / postage");
   }
   console.log(`[seed-feed] ✅ Feed populated. Subscribers can now resolve vigil.feed.`);
   console.log(`[seed-feed]    Alert URL: ${url}`);

@@ -15,7 +15,7 @@ import { diffABIs, assessFunctionRisk, type ABIItem } from "../sourcify/diffFunc
 import { createAlert, AlertSeverity } from "../alerts/index.js";
 import { emitAlert } from "../delivery/emit.js";
 import { analyseUpgrade } from "./analyser.js";
-import { getCurrentFeedUrl, initSwarm, publishAlert, publishBlock } from "../swarm/index.js";
+import { initSwarm, publishData } from "../swarm/index.js";
 import {
   hasEnsWriter,
   hasSepoliaProvider,
@@ -235,11 +235,9 @@ export async function processUpgrade(
     analysis,
   });
 
-  const [alertHash] = await Promise.all([
-    publishAlert(alert),
-    publishBlock(block, block.number),
-  ]);
-  if (alertHash) alert.swarmHash = alertHash;
+
+    await publishData(alert,block);
+
 
   await emitAlert(alert, block.number);
   maybeWriteReputation(proxyName, alert.severity, txHash, alert.timestamp);
@@ -290,32 +288,6 @@ async function bootEnsConfig(): Promise<{
   };
 }
 
-// Verifies that the feed URL the agent will publish to matches the URL it
-// has advertised on agent.vigil.eth — subscribers resolve the latter to
-// discover the former. A mismatch means ENS is stale; surface it loudly so
-// it gets fixed (`npm run ens:sync-feed`).
-function verifyFeedUrlInvariant(publishedFeedUrl: string | null): void {
-  const actualFeedUrl = getCurrentFeedUrl();
-  if (!actualFeedUrl) return;
-  if (!publishedFeedUrl) {
-    console.warn(
-      `[Vigil/ENS] vigil.feed is unset on ${VIGIL_AGENT_ENS_NAME} — subscribers cannot discover this agent's feed. Run: npm run ens:sync-feed`,
-    );
-    console.log(`[Vigil/ENS] Actual feed URL: ${actualFeedUrl}`);
-    return;
-  }
-  if (publishedFeedUrl !== actualFeedUrl) {
-    console.warn(
-      `[Vigil/ENS] vigil.feed on ${VIGIL_AGENT_ENS_NAME} is stale — subscribers will fetch from the wrong URL.`,
-    );
-    console.warn(`[Vigil/ENS]   ENS:    ${publishedFeedUrl}`);
-    console.warn(`[Vigil/ENS]   Actual: ${actualFeedUrl}`);
-    console.warn(`[Vigil/ENS]   Run: npm run ens:sync-feed`);
-    return;
-  }
-  console.log(`[Vigil/ENS] Feed URL matches ENS — subscribers can discover this agent via ${VIGIL_AGENT_ENS_NAME}`);
-}
-
 async function main(): Promise<void> {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const network = await provider.getNetwork();
@@ -324,10 +296,9 @@ async function main(): Promise<void> {
   console.log(`[Vigil] Connected to network: ${network.name} (chainId: ${network.chainId})`);
   console.log(`[Vigil] Current block: ${blockNumber}`);
 
-  const { nameResolver, severityFloor, publishedFeedUrl } = await bootEnsConfig();
+  const { nameResolver, severityFloor } = await bootEnsConfig();
 
   await initSwarm();
-  verifyFeedUrlInvariant(publishedFeedUrl);
 
   await startUpgradeWatcher(
     provider,
