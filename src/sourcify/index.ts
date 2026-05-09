@@ -2,7 +2,6 @@ import axios from "axios";
 import { ethers } from "ethers";
 
 const BASE_URL = "https://sourcify.dev/server";
-export const BASE_SEPOLIA_CHAIN_ID = 8453;
 
 interface CheckByAddressResult {
   address: string;

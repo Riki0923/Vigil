@@ -8,7 +8,6 @@ import {
   getABI,
   getContractMeta,
   getNatSpec,
-  BASE_SEPOLIA_CHAIN_ID,
 } from "../sourcify/index.js";
 import { diffStorageLayouts, assessRisk } from "../sourcify/diffStorage.js";
 import { diffABIs, assessFunctionRisk, type ABIItem } from "../sourcify/diffFunctions.js";
@@ -74,6 +73,12 @@ export async function processUpgrade(
   proxyName: string | null = null,
   severityFloor: AlertSeverity | null = null,
 ): Promise<void> {
+  // Use the actual chain the agent is watching for Sourcify lookups + alert
+  // tagging. Replaces a previously-hardcoded constant that was misnamed
+  // BASE_SEPOLIA_CHAIN_ID but contained 8453 (Base mainnet).
+  const network = await provider.getNetwork();
+  const chainId = Number(network.chainId);
+
   console.log(`\n[Pipeline] ── Upgrade detected ───────────────────────`);
   console.log(`  Tx:       ${txHash}`);
   if (proxyName) {
@@ -82,6 +87,7 @@ export async function processUpgrade(
   console.log(`  Proxy:    ${proxyAddress}`);
   console.log(`  Old impl: ${oldImplAddress}`);
   console.log(`  New impl: ${newImplAddress}`);
+  console.log(`  Chain:    ${chainId}`);
 
   if (newImplAddress.toLowerCase() === oldImplAddress.toLowerCase()) {
     console.log(`[Pipeline] Skipping — same implementation address, checksum difference only`);
@@ -90,12 +96,12 @@ export async function processUpgrade(
 
   // Step 1 — verification with retry
   console.log(`\n[Pipeline] Step 1/4 — Checking Sourcify verification (up to 3 retries, 30s apart)...`);
-  const verified = await isVerifiedWithRetry(newImplAddress, BASE_SEPOLIA_CHAIN_ID, 3, 30_000);
+  const verified = await isVerifiedWithRetry(newImplAddress, chainId, 3, 30_000);
 
   if (!verified) {
     console.log(`[Pipeline] Not verified after retries — checking for similar contracts...`);
 
-    const similarContracts = await findSimilarContracts(newImplAddress, BASE_SEPOLIA_CHAIN_ID, provider);
+    const similarContracts = await findSimilarContracts(newImplAddress, chainId, provider);
 
     const highSimilarity = similarContracts.filter((c) => c.similarity >= 0.9);
     const hasSimilar = similarContracts.length > 0;
@@ -121,6 +127,7 @@ export async function processUpgrade(
       ...(proxyName ? { proxyName } : {}),
       implementationAddress: newImplAddress,
       txHash,
+      chainId,
       isVerified: false,
       hasStorageLayout: false,
       message,
@@ -136,12 +143,12 @@ export async function processUpgrade(
   // Step 2 — fetch all data in parallel
   console.log(`\n[Pipeline] Step 2/4 — Fetching layouts, ABIs, meta, and NatSpec...`);
   const [oldLayout, newLayout, oldABI, newABI, contractMeta, natSpec] = await Promise.all([
-    getStorageLayout(oldImplAddress, BASE_SEPOLIA_CHAIN_ID),
-    getStorageLayout(newImplAddress, BASE_SEPOLIA_CHAIN_ID),
-    getABI(oldImplAddress, BASE_SEPOLIA_CHAIN_ID),
-    getABI(newImplAddress, BASE_SEPOLIA_CHAIN_ID),
-    getContractMeta(newImplAddress, BASE_SEPOLIA_CHAIN_ID),
-    getNatSpec(newImplAddress, BASE_SEPOLIA_CHAIN_ID),
+    getStorageLayout(oldImplAddress, chainId),
+    getStorageLayout(newImplAddress, chainId),
+    getABI(oldImplAddress, chainId),
+    getABI(newImplAddress, chainId),
+    getContractMeta(newImplAddress, chainId),
+    getNatSpec(newImplAddress, chainId),
   ]);
 
   const hasStorageLayout = !!oldLayout && !!newLayout;
@@ -220,6 +227,7 @@ export async function processUpgrade(
     ...(proxyName ? { proxyName } : {}),
     implementationAddress: newImplAddress,
     txHash,
+    chainId,
     isVerified: true,
     hasStorageLayout,
     message: [

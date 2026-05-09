@@ -16,6 +16,7 @@ export interface Alert {
   proxyName?: string;
   implementationAddress: string;
   txHash: string;
+  chainId?: number;
   isVerified: boolean;
   hasStorageLayout: boolean;
   message: string;
