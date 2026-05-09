@@ -92,6 +92,55 @@ npm run dev                        # http://localhost:3000
 
 The dashboard pulls alerts from (in priority order) the configured Swarm feed URL, the local `data/alerts.json` for Base mainnet, the local `data/alerts-base-sepolia.json` (or an inline TS seed) for Base Sepolia, falling back to mock data when nothing is available. The chain selector toggles which network's alerts are shown. The "live"/"mock" pill in the header reflects the source.
 
+## Deploying on Railway
+
+Vigil ships as **two Railway services** sharing one project / environment:
+
+| Service | Root | Public | Start | Branch |
+| --- | --- | --- | --- | --- |
+| `Worker` | `/` (repo root) | unexposed (no port, no healthcheck) | `npm start` → `tsx src/agent/index.ts` | `dev` |
+| `Web` | `frontend/` | port `8080` (public domain) | `npm start` → `next start` | `dev` |
+
+Railway's Nixpacks/Railpack auto-detects Node and runs `npm ci` for both. No `Dockerfile` or `railway.json` needed.
+
+### Shared variables
+
+Define these once at the **environment** level and reference them from each service via `${{shared.VAR}}`:
+
+| Variable | Worker | Web |
+| --- | --- | --- |
+| `RPC_URL` | ✅ | — |
+| `POLL_INTERVAL_MS` | ✅ | — |
+| `OPENAI_API_KEY` | ✅ | ✅ |
+| `GROQ_API_KEY` | ✅ | — |
+| `SWARM_PRIVATE_KEY` | ✅ | — |
+| `SWARM_FEED_URL` | — | ✅ |
+| `NEXT_PUBLIC_DEMO_WALLET` | — | ✅ |
+| `NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY` | — | ✅ |
+| `NEXT_PUBLIC_DEMO_SPENDER` | — | ✅ |
+| `NEXT_PUBLIC_DEMO_PROXY_BASE_SEPOLIA` | — | ✅ |
+| `NEXT_PUBLIC_DEMO_PROXY_BASE` | — | ✅ |
+
+### Bootstrapping the Swarm feed URL
+
+The Worker generates its keypair on first boot if `SWARM_PRIVATE_KEY` is unset. To get a stable feed URL the frontend can point to:
+
+1. Deploy the Worker without `SWARM_PRIVATE_KEY`. On startup it prints the generated key + owner address to **Deploy Logs**.
+2. Copy the printed key into the shared var `SWARM_PRIVATE_KEY`. Without this, every restart spawns a fresh owner and the frontend's feed URL goes stale.
+3. Build the feed URL — owner from the logs, topic is the deterministic hex of `vigil-alerts` (also printed on every boot):
+
+   ```text
+   https://bzz.limo/feeds/<ownerAddress>/<topicHex>
+   ```
+
+4. Set that as `SWARM_FEED_URL` on the Web service. Railway redeploys, and the dashboard switches from seed/mock data to the live Swarm feed once the agent publishes its first alert.
+
+### Worker checklist
+
+- **Service Type / Networking:** unexposed (no public domain, no healthcheck). The agent is a long-running poller, not an HTTP server — Railway will mark it failed if a healthcheck is enabled.
+- **Branch:** `dev` — `main` historically lacked the `npm start` script so the container would crash with `Cannot find module '/app/index.js'`.
+- **Logs:** the **Deploy Logs** tab streams the agent's stdout (`[Vigil] Connected to network`, `[UpgradeWatcher] Listening`, `[Swarm] Alert published`, etc.). The **Network Flow Logs** tab is low-level packet captures and not useful for app-level debugging.
+
 ## Driving a demo upgrade
 
 The [`demo-target/`](demo-target/) sub-project deploys an intentionally-vulnerable UUPS proxy on **Base Sepolia** so the agent has an upgrade event to react to on demand. V2 ships three deliberate sins (storage collision, unguarded `drain`, `mint` losing `onlyOwner`) — each one detectable by a different signal in Vigil's pipeline.
