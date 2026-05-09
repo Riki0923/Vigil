@@ -23,7 +23,7 @@ export async function sendTelegramAlert(alert: any, swarmUrl?: string): Promise<
     const verified = alert.isVerified ? 'yes' : 'no';
     const blockNumber = alert.rawData?.block?.number ?? alert.block?.number ?? 'unknown';
     const summary = alert.analysis?.summary ?? '';
-    message = [
+    const lines: (string | null)[] = [
       `${emoji} <b>${alert.severity} UPGRADE DETECTED</b>`,
       ``,
       `🔷 Proxy: <code>${alert.proxyAddress}</code>`,
@@ -31,9 +31,21 @@ export async function sendTelegramAlert(alert: any, swarmUrl?: string): Promise<
       `⛓ Block: ${blockNumber}`,
       `✅ Verified: ${verified}`,
       summary ? `\n🤖 ${summary}` : null,
+    ];
+    const enrichment = alert.rawData?.apifyEnrichment;
+    if (enrichment?.newsResults?.length > 0) {
+      const first = enrichment.newsResults[0];
+      const title = first?.title ?? first?.organicResults?.[0]?.title ?? null;
+      if (title) lines.push(`\n📰 News: ${title}`);
+    }
+    if (enrichment?.twitterMentions?.length > 0) {
+      lines.push(`\n🐦 Twitter: ${enrichment.twitterMentions.length} mentions found`);
+    }
+    lines.push(
       swarmUrl ? `\n🗄 Swarm: ${swarmUrl}` : null,
       `🔍 <a href="https://basescan.org/tx/${alert.txHash}">View on Basescan</a>`,
-    ].filter(Boolean).join('\n');
+    );
+    message = lines.filter(Boolean).join('\n');
   } catch (buildErr: any) {
     console.error('[Telegram] Failed to build message:', buildErr.message);
     message = `⚠️ Vigil Alert: ${alert.severity} upgrade detected at ${alert.proxyAddress}`;

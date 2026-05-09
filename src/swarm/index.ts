@@ -66,9 +66,9 @@ export async function publishData(alert: any, block: any): Promise<string | null
     console.log(`[Swarm] Feed URL: ${archive.getFeedUrl()}`);
 
     const archived = archive.listBlocks();
-    console.log(`[Swarm] All manifest entries (${archived.length}):`);
+    // console.log(`[Swarm] All manifest entries (${archived.length}):`);
     for (const n of archived) {
-      console.log(`  - blocks/${n}`);
+      // console.log(`  - blocks/${n}`);
     }
 
     return result.url;
