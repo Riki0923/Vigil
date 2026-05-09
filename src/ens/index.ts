@@ -1,11 +1,19 @@
 export {
   ENS_SEPOLIA,
+  ENS_MAINNET,
   COIN_TYPE,
   evmCoinType,
   getSepoliaProvider,
   getSepoliaSigner,
   hasSepoliaProvider,
+  getMainnetProvider,
+  getMainnetSigner,
+  hasMainnetProvider,
+  getEnsContracts,
+  getEnsProvider,
+  getEnsSigner,
 } from "./client.js";
+export type { EnsNetwork, EnsContracts } from "./client.js";
 export {
   ENS_REGISTRY_ABI,
   ENS_RESOLVER_ABI,

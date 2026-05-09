@@ -19,13 +19,13 @@ export function AgentIdentityCard({ identity }: { identity: AgentIdentity | null
   if (!identity) {
     return (
       <div className="brand-border-soft mb-5 rounded-lg border bg-white/40 px-5 py-4 text-xs text-brand-soft">
-        <span className="font-mono">SEPOLIA_RPC_URL</span> not configured —
+        <span className="font-mono">{ENS_CONFIG.rpcEnvName}</span> not configured —
         agent identity not resolvable from ENS in this environment.
       </div>
     );
   }
 
-  const ensAppUrl = `${ENS_CONFIG.appUrlBase}/${identity.name}?network=sepolia`;
+  const ensAppUrl = `${ENS_CONFIG.appUrlBase}/${identity.name}?network=${ENS_CONFIG.networkParam}`;
   const severityChipClass = identity.severityMin
     ? SEVERITY_CHIP[identity.severityMin] ?? "sev-medium"
     : "sev-medium";
@@ -36,7 +36,7 @@ export function AgentIdentityCard({ identity }: { identity: AgentIdentity | null
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-brand-soft">
             <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--severity-low)] pulse-glow" />
-            <span>Agent Identity · resolved live from Ethereum Sepolia ENS</span>
+            <span>Agent Identity · resolved live from {ENS_CONFIG.networkLabel} ENS</span>
           </div>
 
           <div className="mt-2 flex items-baseline gap-3">

@@ -467,7 +467,7 @@ function EnsReputationPanel({ reputation }: { reputation: TargetReputation }) {
             ? "sev-low"
             : "border-[var(--brand-navy)]/15 bg-white/70 text-brand";
 
-  const ensAppUrl = `${ENS_CONFIG.appUrlBase}/${reputation.name}?network=sepolia`;
+  const ensAppUrl = `${ENS_CONFIG.appUrlBase}/${reputation.name}?network=${ENS_CONFIG.networkParam}`;
 
   return (
     <details
@@ -499,7 +499,7 @@ function EnsReputationPanel({ reputation }: { reputation: TargetReputation }) {
 
       <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {reputation.baseSepoliaAddress && (
-          <KV label="addr[base-sepolia]">
+          <KV label={ENS_CONFIG.baseAddrLabel}>
             <span className="font-mono">{truncateAddress(reputation.baseSepoliaAddress)}</span>
           </KV>
         )}
@@ -528,7 +528,7 @@ function EnsReputationPanel({ reputation }: { reputation: TargetReputation }) {
       </div>
 
       <div className="mt-2 flex items-center gap-2 text-[10px] text-brand-soft">
-        <span>resolved live from Sepolia ENS · written back by the agent after each alert</span>
+        <span>resolved live from {ENS_CONFIG.networkLabel} ENS · written back by the agent after each alert</span>
         <span>·</span>
         <a
           href={ensAppUrl}

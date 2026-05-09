@@ -1,70 +1,127 @@
-// Sets the ENSIP-19 primary (reverse) name on Base Sepolia for the demo proxy,
-// so Base-Sepolia-aware explorers / tools render `demo.vigil.eth` instead of hex.
+// Sets the ENSIP-19 primary (reverse) name on Base Sepolia or Base mainnet for
+// the demo proxy, so Base-aware explorers / tools render `demo.<parent>` instead of hex.
 //
-// The Base Sepolia L2ReverseRegistrar (0x00000BeEF055f7934784D6d81b6BC86665630dbA,
-// verified from ensdomains/ens-contracts/deployments/baseSepolia/L2ReverseRegistrar.json)
-// supports three patterns. We use #3 because the demo proxy is an UUPS Ownable
-// upgradeable contract — the proxy itself doesn't expose a "set my reverse name"
-// method, but ENSIP-19 lets us authorize the action via an off-chain signature
-// from `proxy.owner()` (the deployer wallet, also the ENS_REGISTRAR_PRIVATE_KEY).
+// L2ReverseRegistrar deployments (verified against ensdomains/ens-contracts):
+//   Base Sepolia: 0x00000BeEF055f7934784D6d81b6BC86665630dbA
+//   Base mainnet: 0x0000000000D8e504002cC26E3Ec46D81971C1664
 //
-// 1. setName(name) — caller sets their own reverse (would only work for an EOA)
-// 2. setNameForAddrWithSignature — for arbitrary EOAs, signed by that EOA
-// 3. setNameForOwnableWithSignature — for Ownable contracts, signed by their owner ← used here
+// The registrar supports three patterns. We use `setNameForOwnableWithSignature`
+// because the demo proxy is a UUPS Ownable upgradeable contract — the proxy
+// itself doesn't expose a "set my reverse name" method, but ENSIP-19 lets us
+// authorize the action via an off-chain signature from `proxy.owner()`.
 //
-// Usage: tsx scripts/ens/set-base-primary.ts
+// Usage:
+//   tsx scripts/ens/set-base-primary.ts                              (base-sepolia, vigil.eth)
+//   tsx scripts/ens/set-base-primary.ts --network=base-mainnet       (base-mainnet, vigilbot.eth)
+//   tsx scripts/ens/set-base-primary.ts --network=base-mainnet --name=foo.eth
 
 import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-import {
-  COIN_TYPE,
-  L2_REVERSE_REGISTRAR_ABI,
-} from "../../src/ens/index.js";
+import { COIN_TYPE, L2_REVERSE_REGISTRAR_ABI } from "../../src/ens/index.js";
 
 dotenv.config();
 
-const BASE_SEPOLIA_REVERSE_REGISTRAR =
-  process.env.BASE_SEPOLIA_REVERSE_REGISTRAR ?? "0x00000BeEF055f7934784D6d81b6BC86665630dbA";
+type BaseNetwork = "base-sepolia" | "base-mainnet";
 
-const PARENT_NAME = process.env.VIGIL_PARENT_ENS_NAME ?? "vigil.eth";
-const DEMO_NAME = `demo.${PARENT_NAME}`;
+type NetworkConfig = {
+  chainId: bigint;
+  rpcUrl: string | undefined;
+  rpcEnvHint: string;
+  privateKey: string | undefined;
+  pkEnvHint: string;
+  reverseRegistrar: string;
+  coinType: bigint;
+  deploymentSlug: string;
+  defaultParentName: string;
+};
+
 const SIGNATURE_VALIDITY_SECS = 30 * 60; // 30 min — contract caps at block.timestamp + 1h, must stay strictly under
-
-const DEMO_DEPLOYMENT_PATH = path.join(
-  process.cwd(),
-  "demo-target",
-  "deployments",
-  "base-sepolia.json",
-);
 
 const PROXY_OWNABLE_ABI = ["function owner() view returns (address)"] as const;
 
 type DemoDeployment = { proxyAddress: string };
 
+function parseNetworkFlag(): BaseNetwork {
+  const flag = process.argv.find((a) => a.startsWith("--network="));
+  const value = flag ? flag.slice("--network=".length) : "base-sepolia";
+  if (value !== "base-sepolia" && value !== "base-mainnet") {
+    throw new Error(`--network must be "base-sepolia" or "base-mainnet" (got "${value}")`);
+  }
+  return value;
+}
+
+function parseNameFlag(network: BaseNetwork): string {
+  const flag = process.argv.find((a) => a.startsWith("--name="));
+  if (flag) {
+    const value = flag.slice("--name=".length);
+    if (value) return value;
+  }
+  if (network === "base-mainnet") {
+    return process.env.VIGIL_PARENT_ENS_NAME_MAINNET ?? "vigilbot.eth";
+  }
+  return process.env.VIGIL_PARENT_ENS_NAME ?? "vigil.eth";
+}
+
+function getNetworkConfig(network: BaseNetwork): NetworkConfig {
+  if (network === "base-mainnet") {
+    return {
+      chainId: 8453n,
+      rpcUrl: process.env.BASE_MAINNET_RPC_URL ?? process.env.RPC_URL_BASE_MAINNET ?? process.env.RPC_URL,
+      rpcEnvHint: "BASE_MAINNET_RPC_URL or RPC_URL_BASE_MAINNET",
+      privateKey: process.env.BASE_MAINNET_PRIVATE_KEY ?? process.env.ENS_REGISTRAR_PRIVATE_KEY ?? process.env.DEPLOYER_PRIVATE_KEY,
+      pkEnvHint: "BASE_MAINNET_PRIVATE_KEY or ENS_REGISTRAR_PRIVATE_KEY",
+      reverseRegistrar: "0x0000000000D8e504002cC26E3Ec46D81971C1664",
+      coinType: COIN_TYPE.baseMainnet,
+      deploymentSlug: "base-mainnet",
+      defaultParentName: "vigilbot.eth",
+    };
+  }
+  return {
+    chainId: 84532n,
+    rpcUrl: process.env.BASE_SEPOLIA_RPC_URL ?? process.env.RPC_URL,
+    rpcEnvHint: "BASE_SEPOLIA_RPC_URL",
+    privateKey: process.env.BASE_SEPOLIA_PRIVATE_KEY ?? process.env.ENS_REGISTRAR_PRIVATE_KEY ?? process.env.DEPLOYER_PRIVATE_KEY,
+    pkEnvHint: "BASE_SEPOLIA_PRIVATE_KEY or ENS_REGISTRAR_PRIVATE_KEY",
+    reverseRegistrar: process.env.BASE_SEPOLIA_REVERSE_REGISTRAR ?? "0x00000BeEF055f7934784D6d81b6BC86665630dbA",
+    coinType: COIN_TYPE.baseSepolia,
+    deploymentSlug: "base-sepolia",
+    defaultParentName: "vigil.eth",
+  };
+}
+
 async function main(): Promise<void> {
-  const rpc = process.env.BASE_SEPOLIA_RPC_URL ?? process.env.RPC_URL;
-  const pk = process.env.BASE_SEPOLIA_PRIVATE_KEY ?? process.env.DEPLOYER_PRIVATE_KEY;
+  const network = parseNetworkFlag();
+  const parentName = parseNameFlag(network);
+  const demoName = `demo.${parentName}`;
+  const cfg = getNetworkConfig(network);
 
-  if (!rpc) throw new Error("BASE_SEPOLIA_RPC_URL (or RPC_URL) is not set");
-  if (!pk) throw new Error("BASE_SEPOLIA_PRIVATE_KEY (or DEPLOYER_PRIVATE_KEY) is not set");
+  if (!cfg.rpcUrl) throw new Error(`${cfg.rpcEnvHint} is not set`);
+  if (!cfg.privateKey) throw new Error(`${cfg.pkEnvHint} is not set`);
 
-  const provider = new ethers.JsonRpcProvider(rpc, 84532);
-  const network = await provider.getNetwork();
-  if (network.chainId !== 84532n) {
+  const provider = new ethers.JsonRpcProvider(cfg.rpcUrl, Number(cfg.chainId));
+  const onChain = await provider.getNetwork();
+  if (onChain.chainId !== cfg.chainId) {
     throw new Error(
-      `Wrong chain. Expected Base Sepolia (84532), got chainId ${network.chainId}. Set BASE_SEPOLIA_RPC_URL.`,
+      `Wrong chain. Expected ${network} (${cfg.chainId}), got chainId ${onChain.chainId}. Set ${cfg.rpcEnvHint}.`,
     );
   }
-  const signer = new ethers.Wallet(pk, provider);
+  const signer = new ethers.Wallet(cfg.privateKey, provider);
   const signerAddr = await signer.getAddress();
+  console.log(`[set-primary] Network:   ${network} (chainId ${cfg.chainId})`);
   console.log(`[set-primary] Signer:    ${signerAddr}`);
-  console.log(`[set-primary] Registrar: ${BASE_SEPOLIA_REVERSE_REGISTRAR}`);
-  console.log(`[set-primary] Target:    ${DEMO_NAME}`);
+  console.log(`[set-primary] Registrar: ${cfg.reverseRegistrar}`);
+  console.log(`[set-primary] Target:    ${demoName}`);
 
-  const raw = await fs.readFile(DEMO_DEPLOYMENT_PATH, "utf8");
+  const deploymentPath = path.join(
+    process.cwd(),
+    "demo-target",
+    "deployments",
+    `${cfg.deploymentSlug}.json`,
+  );
+  const raw = await fs.readFile(deploymentPath, "utf8");
   const { proxyAddress } = JSON.parse(raw) as DemoDeployment;
   console.log(`[set-primary] Proxy:     ${proxyAddress}`);
 
@@ -85,7 +142,7 @@ async function main(): Promise<void> {
   //     contractAddr, owner, signatureExpiry, name, coinTypes
   //   )).toEthSignedMessageHash()
   const expiry = BigInt(Math.floor(Date.now() / 1000) + SIGNATURE_VALIDITY_SECS);
-  const coinTypes = [COIN_TYPE.baseSepolia];
+  const coinTypes = [cfg.coinType];
 
   const selector = ethers
     .id("setNameForOwnableWithSignature(address,address,uint256,string,uint256[],bytes)")
@@ -94,12 +151,12 @@ async function main(): Promise<void> {
     ethers.solidityPacked(
       ["address", "bytes4", "address", "address", "uint256", "string", "uint256[]"],
       [
-        BASE_SEPOLIA_REVERSE_REGISTRAR,
+        cfg.reverseRegistrar,
         selector,
         proxyAddress,
         signerAddr,
         expiry,
-        DEMO_NAME,
+        demoName,
         coinTypes,
       ],
     ),
@@ -107,26 +164,20 @@ async function main(): Promise<void> {
   const signature = await signer.signMessage(ethers.getBytes(messageHash));
   console.log(`[set-primary] Signature: ${signature}`);
 
-  const registrar = new ethers.Contract(
-    BASE_SEPOLIA_REVERSE_REGISTRAR,
-    L2_REVERSE_REGISTRAR_ABI,
-    signer,
-  );
+  const registrar = new ethers.Contract(cfg.reverseRegistrar, L2_REVERSE_REGISTRAR_ABI, signer);
   console.log(`[set-primary] Submitting setNameForOwnableWithSignature...`);
   const tx = await registrar.getFunction("setNameForOwnableWithSignature")(
     proxyAddress,
     signerAddr,
     expiry,
-    DEMO_NAME,
+    demoName,
     coinTypes,
     signature,
   );
   console.log(`[set-primary] Tx: ${tx.hash}`);
   const receipt = await tx.wait();
   console.log(`[set-primary] Confirmed in block ${receipt?.blockNumber}.`);
-  console.log(
-    `[set-primary] ✅ Reverse name set. Verify on a Base Sepolia ENS-aware explorer.`,
-  );
+  console.log(`[set-primary] ✅ Reverse name set. Verify on a Base ${network === "base-mainnet" ? "mainnet" : "Sepolia"} ENS-aware explorer.`);
 }
 
 main().catch((err) => {

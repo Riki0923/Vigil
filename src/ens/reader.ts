@@ -3,7 +3,20 @@
 
 import { ethers } from "ethers";
 import { ENS_RESOLVER_ABI, ENS_REGISTRY_ABI } from "./abi.js";
-import { COIN_TYPE, ENS_SEPOLIA, getSepoliaProvider } from "./client.js";
+import {
+  COIN_TYPE,
+  getEnsContracts,
+  getEnsProvider,
+  type EnsNetwork,
+} from "./client.js";
+
+// The agent runtime resolves ENS against this network. Defaults to sepolia for
+// backward compatibility; set VIGIL_ENS_NETWORK=mainnet to read from vigilbot.eth.
+function getActiveNetwork(): EnsNetwork {
+  const v = process.env.VIGIL_ENS_NETWORK?.toLowerCase();
+  if (v === "mainnet") return "mainnet";
+  return "sepolia";
+}
 import {
   parseCapabilities,
   parseSeverity,
@@ -13,8 +26,10 @@ import {
 } from "./records.js";
 
 async function getResolverFor(name: string): Promise<ethers.Contract | null> {
-  const provider = getSepoliaProvider();
-  const registry = new ethers.Contract(ENS_SEPOLIA.registry, ENS_REGISTRY_ABI, provider);
+  const network = getActiveNetwork();
+  const provider = getEnsProvider(network);
+  const contracts = getEnsContracts(network);
+  const registry = new ethers.Contract(contracts.registry, ENS_REGISTRY_ABI, provider);
   const node = ethers.namehash(name);
   const resolverAddr = (await registry.getFunction("resolver")(node)) as string;
   if (!resolverAddr || resolverAddr === ethers.ZeroAddress) return null;
@@ -77,12 +92,17 @@ export async function resolveTargetConfig(name: string): Promise<TargetEnsConfig
   const resolver = await getResolverFor(name);
   if (!resolver) return null;
   const node = ethers.namehash(name);
+  // Read whichever Base coinType matches the active network; the field is
+  // named `baseSepoliaAddress` for backward compat but holds either chain.
+  const network = getActiveNetwork();
+  const baseCoinType =
+    network === "mainnet" ? COIN_TYPE.baseMainnet : COIN_TYPE.baseSepolia;
 
   const [description, kind, feed, addr] = await Promise.all([
     readText(resolver, node, RECORD_KEYS.description),
     readText(resolver, node, RECORD_KEYS.kind),
     readText(resolver, node, RECORD_KEYS.feed),
-    readMultichainAddress(resolver, node, COIN_TYPE.baseSepolia),
+    readMultichainAddress(resolver, node, baseCoinType),
   ]);
 
   return {
@@ -94,9 +114,15 @@ export async function resolveTargetConfig(name: string): Promise<TargetEnsConfig
 }
 
 // Lightweight existence check used by scripts before write ops.
-export async function isNameRegistered(name: string): Promise<boolean> {
-  const provider = getSepoliaProvider();
-  const registry = new ethers.Contract(ENS_SEPOLIA.registry, ENS_REGISTRY_ABI, provider);
+// Defaults to the active VIGIL_ENS_NETWORK (or sepolia if unset).
+// Pass network explicitly when seeding/registering against a specific chain.
+export async function isNameRegistered(
+  name: string,
+  network: EnsNetwork = getActiveNetwork(),
+): Promise<boolean> {
+  const provider = getEnsProvider(network);
+  const contracts = getEnsContracts(network);
+  const registry = new ethers.Contract(contracts.registry, ENS_REGISTRY_ABI, provider);
   const node = ethers.namehash(name);
   const owner = (await registry.getFunction("owner")(node)) as string;
   return owner !== ethers.ZeroAddress;

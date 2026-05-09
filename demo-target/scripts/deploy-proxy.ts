@@ -2,8 +2,7 @@ import hre, { ethers, upgrades } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
 
-const DEPLOYMENTS_DIR = path.join(__dirname, "..", "deployments");
-const DEPLOYMENTS_PATH = path.join(DEPLOYMENTS_DIR, "base-sepolia.json");
+import { getNetworkPaths } from "./lib/paths";
 
 interface DeploymentRecord {
   proxyAddress: string;
@@ -17,14 +16,17 @@ interface DeploymentRecord {
 }
 
 async function main(): Promise<void> {
-  if (fs.existsSync(DEPLOYMENTS_PATH)) {
+  const paths = getNetworkPaths(hre);
+  console.log(`[deploy-proxy] Network:  ${paths.name} (chainId ${paths.chainId})`);
+
+  if (fs.existsSync(paths.deploymentsPath)) {
     const existing: DeploymentRecord = JSON.parse(
-      fs.readFileSync(DEPLOYMENTS_PATH, "utf8"),
+      fs.readFileSync(paths.deploymentsPath, "utf8"),
     );
     console.log("[deploy-proxy] Existing deployment found:");
     console.log(JSON.stringify(existing, null, 2));
     console.log(
-      "[deploy-proxy] Skipping deploy. Delete deployments/base-sepolia.json to redeploy.",
+      `[deploy-proxy] Skipping deploy. Delete ${path.relative(process.cwd(), paths.deploymentsPath)} to redeploy.`,
     );
     return;
   }
@@ -36,7 +38,7 @@ async function main(): Promise<void> {
   console.log(`[deploy-proxy] Balance:  ${ethers.formatEther(balance)} ETH`);
   if (balance === 0n) {
     throw new Error(
-      "Deployer has 0 ETH on Base Sepolia. Fund the wallet from a faucet first.",
+      `Deployer has 0 ETH on ${paths.name}. Fund the wallet${paths.name === "baseSepolia" ? " from a faucet" : ""} first.`,
     );
   }
 
@@ -65,12 +67,13 @@ async function main(): Promise<void> {
     deployBlockNumber: deployReceipt?.blockNumber ?? null,
   };
 
-  fs.mkdirSync(DEPLOYMENTS_DIR, { recursive: true });
-  fs.writeFileSync(DEPLOYMENTS_PATH, JSON.stringify(record, null, 2));
+  fs.mkdirSync(path.dirname(paths.deploymentsPath), { recursive: true });
+  fs.writeFileSync(paths.deploymentsPath, JSON.stringify(record, null, 2));
 
   console.log(`[deploy-proxy] Proxy:    ${proxyAddress}`);
   console.log(`[deploy-proxy] V1 impl:  ${v1ImplAddress}`);
   console.log(`[deploy-proxy] Block:    ${record.deployBlockNumber}`);
+  console.log(`[deploy-proxy] Explorer: ${paths.explorerBase}/address/${proxyAddress}`);
 
   console.log("[deploy-proxy] Verifying V1 impl on Sourcify...");
   try {
@@ -82,7 +85,7 @@ async function main(): Promise<void> {
   } catch (err) {
     console.warn("[deploy-proxy] Sourcify verification failed:", err);
     console.warn(
-      `[deploy-proxy] Re-run manually: npx hardhat verify --network baseSepolia ${v1ImplAddress}`,
+      `[deploy-proxy] Re-run manually: npx hardhat verify --network ${paths.name} ${v1ImplAddress}`,
     );
   }
 }

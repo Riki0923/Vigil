@@ -1,16 +1,21 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const ROOT = path.join(__dirname, "..");
-const TARGETS = [
-  "deployments/base-sepolia.json",
-  ".openzeppelin/base-sepolia.json",
-];
+import { getNetworkPathsFromCli } from "./lib/paths";
 
 function main(): void {
+  const paths = getNetworkPathsFromCli();
+  console.log(`[reset] network: ${paths.name} (slug ${paths.slug})`);
+
+  const root = path.join(__dirname, "..");
+  const targets = [
+    path.relative(root, paths.deploymentsPath),
+    path.join(".openzeppelin", `${paths.slug}.json`),
+  ];
+
   let removed = 0;
-  for (const rel of TARGETS) {
-    const abs = path.join(ROOT, rel);
+  for (const rel of targets) {
+    const abs = path.join(root, rel);
     if (fs.existsSync(abs)) {
       fs.unlinkSync(abs);
       console.log(`[reset] removed ${rel}`);

@@ -3,9 +3,10 @@
 import { SUPPORTED_CHAINS, type SupportedChainId } from "@/lib/wallet";
 import { useViewChain } from "./ViewChainContext";
 
+// Sepolia option is hidden for now — UI is mainnet-only. Re-add the
+// Base Sepolia entry here when we want to expose testnet again.
 const OPTIONS: { id: SupportedChainId; label: string; sublabel: string }[] = [
   { id: SUPPORTED_CHAINS.base.id, label: "Base", sublabel: "mainnet" },
-  { id: SUPPORTED_CHAINS.baseSepolia.id, label: "Base Sepolia", sublabel: "testnet" },
 ];
 
 export function ChainSelector() {
