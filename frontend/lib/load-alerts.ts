@@ -33,13 +33,27 @@ function isAlert(value: unknown): value is Alert {
 }
 
 async function fetchLatestFromSwarm(url: string): Promise<Alert | null> {
+  console.log(`[loadAlerts] Swarm fetch → ${url}`);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), SWARM_FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
-    if (!res.ok) return null;
+    console.log(
+      `[loadAlerts] Swarm response status=${res.status} content-type=${res.headers.get("content-type") ?? "n/a"} feed-index=${res.headers.get("swarm-feed-index") ?? "n/a"}`,
+    );
+    if (!res.ok) {
+      console.warn(`[loadAlerts] Swarm non-200 (${res.status}) — skipping`);
+      return null;
+    }
     const data = await res.json();
-    return isAlert(data) ? data : null;
+    if (!isAlert(data)) {
+      console.warn(`[loadAlerts] Swarm payload failed isAlert validation`, data);
+      return null;
+    }
+    console.log(
+      `[loadAlerts] Swarm OK — id=${data.id} severity=${data.severity} proxy=${data.proxyAddress} tx=${data.txHash}`,
+    );
+    return data;
   } catch (err) {
     console.warn("[loadAlerts] Swarm fetch failed:", err);
     return null;
@@ -60,6 +74,9 @@ async function readAlertsFile(filePath: string, defaultChainId: number): Promise
       ...a,
       chainId: typeof a.chainId === "number" ? a.chainId : defaultChainId,
     }));
+    console.log(
+      `[loadAlerts] file ${path.basename(filePath)} → ${normalized.length} alert(s)`,
+    );
     return { alerts: normalized, updatedAt: parsed.updatedAt };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
@@ -70,6 +87,10 @@ async function readAlertsFile(filePath: string, defaultChainId: number): Promise
 }
 
 export async function loadAlerts(): Promise<LoadAlertsResult> {
+  console.log(
+    `[loadAlerts] start — SWARM_FEED_URL=${SWARM_FEED_URL ? "set" : "unset"}`,
+  );
+
   const [swarmLatest, main, sepoliaFile] = await Promise.all([
     SWARM_FEED_URL ? fetchLatestFromSwarm(SWARM_FEED_URL) : Promise.resolve(null),
     readAlertsFile(ALERTS_FILE, BASE_CHAIN_ID),
@@ -94,7 +115,12 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
     return true;
   });
 
+  console.log(
+    `[loadAlerts] composition — swarm=${swarmLatest ? 1 : 0} mainFile=${main?.alerts.length ?? 0} sepoliaFile=${sepoliaFile?.alerts.length ?? 0} seedFallback=${sepoliaFile ? 0 : seedAlertsBaseSepolia.length} → deduped=${deduped.length}`,
+  );
+
   if (deduped.length === 0) {
+    console.log(`[loadAlerts] no alerts found — returning mock`);
     return { alerts: mockAlerts, source: "mock" };
   }
 
@@ -109,5 +135,8 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
     .sort()
     .pop();
 
+  console.log(
+    `[loadAlerts] returning ${deduped.length} alert(s) source=live updatedAt=${latestUpdated ?? "n/a"}`,
+  );
   return { alerts: deduped, source: "live", updatedAt: latestUpdated };
 }

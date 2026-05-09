@@ -1,16 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import {
-  useAccount,
-  useChainId,
-  useConnect,
-  useSwitchChain,
-  useWaitForTransactionReceipt,
-  useWriteContract,
-} from "wagmi";
-import { erc20Abi } from "viem";
-import { injected } from "wagmi/connectors";
+import { erc20Abi, createWalletClient, createPublicClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { base, baseSepolia } from "viem/chains";
 import { hasActiveApproval, useDemoAllowance } from "@/lib/approvals";
 import {
   DEMO_SPENDER,
@@ -23,6 +16,16 @@ import { useViewChain } from "./ViewChainContext";
 
 type Address = `0x${string}`;
 
+const DEMO_WALLET_PRIVATE_KEY = process.env.NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY as
+  | Address
+  | undefined;
+
+function chainForId(id: number) {
+  if (id === base.id) return base;
+  if (id === baseSepolia.id) return baseSepolia;
+  return null;
+}
+
 export function RevokeBanner({
   proxyAddress,
   alertChainId,
@@ -30,10 +33,6 @@ export function RevokeBanner({
   proxyAddress: string;
   alertChainId: number | undefined;
 }) {
-  const { address: realAddress, isConnected } = useAccount();
-  const walletChainId = useChainId();
-  const { switchChainAsync } = useSwitchChain();
-  const { connectAsync } = useConnect();
   const { viewChainId } = useViewChain();
 
   const targetChainId = alertChainId ?? SUPPORTED_CHAINS.base.id;
@@ -43,34 +42,23 @@ export function RevokeBanner({
     Boolean(demoProxy) && demoProxy!.toLowerCase() === proxyAddress.toLowerCase();
   const matchesViewChain = targetChainId === viewChainId;
 
-  // Use real connected address if present; otherwise read on behalf of the demo wallet.
-  const ownerForRead =
-    (realAddress as Address | undefined) ?? (DEMO_WALLET as Address | undefined);
-
   const allowanceQuery = useDemoAllowance(
     targetChainId,
     isDemoProxy && matchesViewChain ? (demoProxy as Address) : undefined,
-    ownerForRead,
+    DEMO_WALLET as Address | undefined,
     DEMO_SPENDER,
   );
 
-  const {
-    writeContractAsync,
-    data: txHash,
-    isPending: isWritePending,
-    reset: resetWrite,
-  } = useWriteContract();
-  const { isLoading: isMining, isSuccess: isMined } = useWaitForTransactionReceipt({
-    hash: txHash,
-    chainId: targetChainId,
-  });
-  const [isOrchestrating, setIsOrchestrating] = useState(false);
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
+  const [isSending, setIsSending] = useState(false);
+  const [isMining, setIsMining] = useState(false);
+  const [isMined, setIsMined] = useState(false);
   const [orchestrationError, setOrchestrationError] = useState<string | null>(null);
 
   if (!isDemoProxy || !matchesViewChain) return null;
 
   const allowance = allowanceQuery.data;
-  const wasRevoked = isMined && (allowance ?? 0n) === 0n;
+  const wasRevoked = isMined;
   if (!hasActiveApproval(allowance) && !wasRevoked) return null;
 
   if (wasRevoked) {
@@ -83,41 +71,64 @@ export function RevokeBanner({
   }
 
   const handleRevoke = async () => {
-    resetWrite();
+    console.log("[RevokeBanner] click revoke", {
+      targetChainId,
+      proxy: demoProxy,
+      spender: DEMO_SPENDER,
+      hasKey: Boolean(DEMO_WALLET_PRIVATE_KEY),
+      currentAllowance: allowance?.toString(),
+    });
+    if (!DEMO_WALLET_PRIVATE_KEY) {
+      console.error("[RevokeBanner] missing NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY env var");
+      setOrchestrationError("NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY not set");
+      return;
+    }
+    const chain = chainForId(targetChainId);
+    if (!chain) {
+      console.error(`[RevokeBanner] unsupported chain id ${targetChainId}`);
+      setOrchestrationError(`Unsupported chain: ${targetChainId}`);
+      return;
+    }
     setOrchestrationError(null);
-    setIsOrchestrating(true);
+    setTxHash(undefined);
+    setIsMined(false);
+    setIsSending(true);
     try {
-      if (!isConnected) {
-        await connectAsync({ connector: injected(), chainId: targetChainId });
-      } else if (walletChainId !== targetChainId) {
-        await switchChainAsync({ chainId: targetChainId });
-      }
-      await writeContractAsync({
-        chainId: targetChainId,
+      const account = privateKeyToAccount(DEMO_WALLET_PRIVATE_KEY);
+      console.log(`[RevokeBanner] signing as ${account.address} on ${chain.name}`);
+      const walletClient = createWalletClient({ account, chain, transport: http() });
+      const publicClient = createPublicClient({ chain, transport: http() });
+      const hash = await walletClient.writeContract({
         address: demoProxy as Address,
         abi: erc20Abi,
         functionName: "approve",
         args: [DEMO_SPENDER as Address, 0n],
       });
+      console.log(`[RevokeBanner] tx submitted: ${hash}`);
+      setTxHash(hash);
+      setIsSending(false);
+      setIsMining(true);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      console.log(
+        `[RevokeBanner] tx mined block=${receipt.blockNumber} status=${receipt.status}`,
+      );
+      setIsMining(false);
+      setIsMined(true);
+      void allowanceQuery.refetch();
     } catch (err) {
+      console.error("[RevokeBanner] revoke failed:", err);
       const msg = err instanceof Error ? err.message : "revoke failed";
       setOrchestrationError(msg);
-    } finally {
-      setIsOrchestrating(false);
+      setIsSending(false);
+      setIsMining(false);
     }
   };
 
-  const buttonLabel = isOrchestrating
-    ? !isConnected
-      ? "Connecting wallet…"
-      : walletChainId !== targetChainId
-        ? "Switching chain…"
-        : "Confirm in wallet…"
-    : isWritePending
-      ? "Confirm in wallet…"
-      : isMining
-        ? "Mining…"
-        : "Revoke approval";
+  const buttonLabel = isSending
+    ? "Sending tx…"
+    : isMining
+      ? "Mining…"
+      : "Revoke approval";
 
   return (
     <div className="brand-border mt-3 rounded-md border bg-rose-50 px-3 py-2 text-xs">
@@ -128,7 +139,7 @@ export function RevokeBanner({
       </div>
       <div className="mt-2 flex items-center gap-2">
         <button
-          disabled={isOrchestrating || isWritePending || isMining}
+          disabled={isSending || isMining}
           onClick={handleRevoke}
           className="btn-brand inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs disabled:opacity-60"
         >
