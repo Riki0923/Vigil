@@ -121,6 +121,7 @@ export type Alert = {
   implementationAddress: string;
   txHash: string;
   blockNumber?: number;
+  chainId?: number;
   isVerified: boolean;
   hasStorageLayout: boolean;
   message: string;
