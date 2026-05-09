@@ -7,6 +7,7 @@
     "compile": "hardhat compile",
     "deploy": "hardhat run scripts/deploy-proxy.ts --network baseSepolia",
     "upgrade": "hardhat run scripts/trigger-upgrade.ts --network baseSepolia",
+    "seed-demo-wallet": "hardhat run scripts/seed-demo-wallet.ts --network baseSepolia",
     "reset": "ts-node scripts/reset.ts",
     "cycle": "npm run reset && npm run deploy && npm run upgrade",
     "typecheck": "tsc --noEmit"
