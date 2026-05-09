@@ -38,12 +38,14 @@
   "dependencies": {
     "@ethersphere/bee-js": "^12.1.0",
     "@langchain/core": "^1.1.45",
+    "apify-client": "^2.23.2",
     "axios": "^1.16.0",
     "dotenv": "^17.4.2",
     "ethers": "^6.16.0",
     "groq-sdk": "^1.1.2",
     "langchain": "^1.4.0",
     "openai": "^6.37.0",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "x402": "^1.2.0"
   }
 }

@@ -16,6 +16,7 @@ import { emitAlert } from "../delivery/emit.js";
 import { analyseUpgrade } from "./analyser.js";
 import { initSwarm, publishData } from "../swarm/index.js";
 import { sendTelegramAlert } from "../delivery/telegram.js";
+import { enrichAlert } from "../apify/index.js";
 import {
   hasEnsWriter,
   hasSepoliaProvider,
@@ -228,7 +229,7 @@ export async function processUpgrade(
   }
 
   // Step 4 — AI analysis
-  console.log(`\n[Pipeline] Step 4/4 — AI analysis...`);
+  console.log(`\n[Pipeline] Step 4/5 — AI analysis...`);
   const analysis = await analyseUpgrade({
     proxyAddress,
     oldImplementation: oldImplAddress,
@@ -239,6 +240,9 @@ export async function processUpgrade(
     severity,
     natSpec,
   });
+
+  console.log('\n[Pipeline] Step 4.5 — Enriching with Apify social context...');
+  const apifyEnrichment = await enrichAlert(proxyAddress, newImplAddress);
 
   const alert = createAlert({
     severity,
@@ -258,7 +262,7 @@ export async function processUpgrade(
         : "ABI unavailable",
       matchType ? `Match: ${matchType}` : null,
     ].filter(Boolean).join(" | "),
-    rawData: { storageDiff, abiDiff, functionRiskFlags, matchType, contractMeta, natSpec, block },
+    rawData: { storageDiff, abiDiff, functionRiskFlags, matchType, contractMeta, natSpec, block, apifyEnrichment },
     analysis,
   });
 
