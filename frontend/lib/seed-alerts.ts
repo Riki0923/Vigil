@@ -9,6 +9,7 @@ export const seedAlertsBaseSepolia: Alert[] = [
     timestamp: "2026-05-09T11:10:00.000Z",
     severity: "HIGH",
     proxyAddress: "0x65953e7c7C8A0Ee61be3b33BD88E2961439B21AD",
+    proxyName: "demo.vigil.eth",
     implementationAddress: "0x91F276F98a20d3fBC27e3d8ccE73Ad0e78C6358f",
     txHash: "0x42e11f0ac674a86da6bbf3914e825580e8ed91d65f18945db7fe495b989e2f97",
     chainId: 84532,
