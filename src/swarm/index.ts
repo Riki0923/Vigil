@@ -1,4 +1,6 @@
-import { Bee, Topic, PrivateKey, NULL_STAMP, SWARM_GATEWAY_URL } from "@ethersphere/bee-js";
+import { Bee, Topic, PrivateKey, NULL_STAMP } from "@ethersphere/bee-js";
+
+const BZZ_LIMO = "https://bzz.limo";
 import { randomBytes } from "crypto";
 
 const ALERT_TOPIC_NAME = "vigil-alerts";
@@ -9,7 +11,7 @@ let alertTopic: Topic;
 let ownerAddress: string;
 
 export function initSwarm(): void {
-  bee = new Bee(SWARM_GATEWAY_URL);
+  bee = new Bee(BZZ_LIMO);
 
   const rawKey = process.env.SWARM_PRIVATE_KEY;
 
@@ -29,7 +31,7 @@ export function initSwarm(): void {
 
   console.log(`[Swarm] Owner address: ${ownerAddress}`);
   console.log(`[Swarm] Alert feed topic: ${ALERT_TOPIC_NAME} (${alertTopic.toHex()})`);
-  console.log(`[Swarm] Gateway: ${SWARM_GATEWAY_URL}`);
+  console.log(`[Swarm] Gateway: ${BZZ_LIMO}`);
 }
 
 export async function publishAlert(alert: any): Promise<string | null> {
@@ -40,13 +42,13 @@ export async function publishAlert(alert: any): Promise<string | null> {
 
   try {
     const json = JSON.stringify(alert);
-    const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
+    const uploadResult = await bee.uploadFile(NULL_STAMP, Buffer.from(json), 'alert.json', { contentType: 'application/json' });
     const reference = uploadResult.reference;
 
     const writer = bee.makeFeedWriter(alertTopic, privateKey);
     await writer.uploadReference(NULL_STAMP, reference);
 
-    const url = `${SWARM_GATEWAY_URL}/bzz/${reference.toHex()}`;
+    const url = `${BZZ_LIMO}/bzz/${reference.toHex()}`;
     console.log(`[Swarm] Alert published: ${url}`);
     return url;
   } catch (err) {
@@ -63,14 +65,14 @@ export async function publishBlock(blockData: any, blockNumber: number): Promise
 
   try {
     const json = JSON.stringify(blockData);
-    const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
+    const uploadResult = await bee.uploadFile(NULL_STAMP, Buffer.from(json), 'block.json', { contentType: 'application/json' });
     const reference = uploadResult.reference;
 
     const blockTopic = Topic.fromString(`vigil-blocks-${blockNumber}`);
     const writer = bee.makeFeedWriter(blockTopic, privateKey);
     await writer.uploadReference(NULL_STAMP, reference);
 
-    const url = `${SWARM_GATEWAY_URL}/bzz/${reference.toHex()}`;
+    const url = `${BZZ_LIMO}/bzz/${reference.toHex()}`;
     console.log(`[Swarm] Block ${blockNumber} archived: ${url}`);
     return url;
   } catch (err) {
@@ -85,5 +87,5 @@ export function getFeedManifestUrl(): string | null {
     return null;
   }
 
-  return `${SWARM_GATEWAY_URL}/feeds/${ownerAddress}/${alertTopic.toHex()}`;
+  return `${BZZ_LIMO}/feeds/${ownerAddress}/${alertTopic.toHex()}`;
 }
