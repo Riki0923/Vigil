@@ -43,10 +43,10 @@ let cachedMainnetProvider: ethers.JsonRpcProvider | null = null;
 
 export function getSepoliaProvider(): ethers.JsonRpcProvider {
   if (cachedSepoliaProvider) return cachedSepoliaProvider;
-  const url = process.env.SEPOLIA_RPC_URL;
+  const url = process.env.ETH_SEPOLIA_RPC_URL;
   if (!url) {
     throw new Error(
-      "SEPOLIA_RPC_URL is not set — required for ENS resolution on Ethereum Sepolia",
+      "ETH_SEPOLIA_RPC_URL is not set — required for ENS resolution on Ethereum Sepolia",
     );
   }
   cachedSepoliaProvider = new ethers.JsonRpcProvider(url, ENS_SEPOLIA.chainId);
@@ -54,7 +54,7 @@ export function getSepoliaProvider(): ethers.JsonRpcProvider {
 }
 
 export function hasSepoliaProvider(): boolean {
-  return Boolean(process.env.SEPOLIA_RPC_URL);
+  return Boolean(process.env.ETH_SEPOLIA_RPC_URL);
 }
 
 export function getSepoliaSigner(): ethers.Wallet {

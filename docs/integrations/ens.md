@@ -195,7 +195,7 @@ No Vigil-controlled endpoint is involved.
 | Variable | Required | Description |
 | --- | --- | --- |
 | `VIGIL_ENS_NETWORK` | No (defaults: agent → `sepolia`, frontend → `mainnet`) | `mainnet` or `sepolia`. Selects which parent the runtime reads from. |
-| `SEPOLIA_RPC_URL` | Yes when `VIGIL_ENS_NETWORK=sepolia` | Ethereum Sepolia JSON-RPC endpoint. Used for reads + writes against `vigil.eth`. |
+| `ETH_SEPOLIA_RPC_URL` | Yes when `VIGIL_ENS_NETWORK=sepolia` | Ethereum Sepolia JSON-RPC endpoint. Used for reads + writes against `vigil.eth`. |
 | `ETH_MAINNET_RPC_URL` | Yes when `VIGIL_ENS_NETWORK=mainnet` | Ethereum mainnet JSON-RPC endpoint. Used for reads + writes against `vigilbot.eth`. |
 | `ENS_REGISTRAR_PRIVATE_KEY` | For write operations only | Wallet that owns the parent name. The same key signs both Sepolia and mainnet writes; it must own `vigil.eth` on Sepolia and/or `vigilbot.eth` on mainnet for the corresponding network's writes to succeed. |
 | `VIGIL_PARENT_ENS_NAME` | No (default `vigil.eth`) | Override for the Sepolia parent name. |
@@ -247,7 +247,7 @@ All ENS scripts under `scripts/ens/` accept `--network=sepolia|mainnet` (default
 
 | Condition | Effect | Remediation |
 | --- | --- | --- |
-| `SEPOLIA_RPC_URL` unset | Agent runs in legacy mode: no severity floor (every alert publishes), no proxy-name tagging on alerts, no reputation writeback. | Set `SEPOLIA_RPC_URL`. |
+| `ETH_SEPOLIA_RPC_URL` unset | Agent runs in legacy mode: no severity floor (every alert publishes), no proxy-name tagging on alerts, no reputation writeback. | Set `ETH_SEPOLIA_RPC_URL`. |
 | `agent.vigil.eth` unreachable at boot | Severity floor and `vigil.feed` advertisement are not applied; agent logs a warning and continues. | Verify the resolver and the records via `npm run ens:resolve agent.vigil.eth`. |
 | `data/ens-targets.json` missing or stale | Alerts emit with bare hex addresses instead of human names. | Run `npm run ens:seed` to repopulate. |
 | `vigil.feed` not published | Subscribers cannot discover the agent's feed URL. | Run `npm run ens:sync-feed`. |
