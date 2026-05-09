@@ -6,7 +6,13 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx src/agent/index.ts",
-    "start": "tsx src/agent/index.ts"
+    "start": "tsx src/agent/index.ts",
+    "typecheck": "tsc --noEmit",
+    "ens:resolve": "tsx scripts/ens/resolve.ts",
+    "ens:check": "tsx scripts/ens/check-parent.ts",
+    "ens:register": "tsx scripts/ens/register-parent.ts",
+    "ens:seed": "tsx scripts/ens/seed-subnames.ts",
+    "ens:set-base-primary": "tsx scripts/ens/set-base-primary.ts"
   },
   "repository": {
     "type": "git",
