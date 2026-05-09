@@ -34,3 +34,5 @@ export {
   CACHE_PATH,
 } from "./cache.js";
 export type { EnsTargetCache } from "./cache.js";
+export { updateTargetReputation, hasEnsWriter } from "./writer.js";
+export type { ReputationUpdate } from "./writer.js";

@@ -17,10 +17,12 @@ import { emitAlert } from "../delivery/emit.js";
 import { analyseUpgrade } from "./analyser.js";
 import { initSwarm, publishAlert, publishBlock } from "../swarm/index.js";
 import {
+  hasEnsWriter,
   hasSepoliaProvider,
   loadEnsCache,
   lookupName,
   resolveAgentConfig,
+  updateTargetReputation,
 } from "../ens/index.js";
 
 dotenv.config();
@@ -44,6 +46,22 @@ function maxSeverity(...severities: AlertSeverity[]): AlertSeverity {
 function bumpSeverity(severity: AlertSeverity): AlertSeverity {
   const idx = SEVERITY_ORDER.indexOf(severity);
   return SEVERITY_ORDER[Math.min(idx + 1, SEVERITY_ORDER.length - 1)] ?? AlertSeverity.CRITICAL;
+}
+
+// Fire-and-forget reputation write to the target's ENS subname. Logs on
+// failure but never blocks the alert flow. Skipped if the proxy isn't named
+// in the ENS cache or if no registrar key is configured.
+function maybeWriteReputation(
+  name: string | null,
+  severity: AlertSeverity,
+  txHash: string,
+  timestamp: string,
+): void {
+  if (!name) return;
+  if (!hasEnsWriter()) return;
+  updateTargetReputation(name, { severity, txHash, timestamp }).catch((err) => {
+    console.warn(`[Vigil/ENS] Reputation update failed for ${name}:`, err.shortMessage ?? err.message ?? err);
+  });
 }
 
 export async function processUpgrade(
@@ -97,7 +115,7 @@ export async function processUpgrade(
       console.log(`[Pipeline] No similar contracts found`);
     }
 
-    await emitAlert(createAlert({
+    const unverifiedAlert = createAlert({
       severity: AlertSeverity.CRITICAL,
       proxyAddress,
       ...(proxyName ? { proxyName } : {}),
@@ -107,7 +125,9 @@ export async function processUpgrade(
       hasStorageLayout: false,
       message,
       rawData: { oldImplAddress, similarContracts },
-    }), block.number);
+    });
+    await emitAlert(unverifiedAlert, block.number);
+    maybeWriteReputation(proxyName, unverifiedAlert.severity, txHash, unverifiedAlert.timestamp);
     return;
   }
 
@@ -222,6 +242,7 @@ export async function processUpgrade(
   if (alertHash) alert.swarmHash = alertHash;
 
   await emitAlert(alert, block.number);
+  maybeWriteReputation(proxyName, alert.severity, txHash, alert.timestamp);
 }
 
 async function bootEnsConfig(): Promise<{
