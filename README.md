@@ -187,12 +187,17 @@ Reputation lookup is symmetric — `npm run ens:resolve demo.vigil.eth` returns 
 
 ### Live deployment (2026-05-09)
 
-| Name | Sepolia tx | Notes |
+| Record | Chain · tx | Notes |
 | --- | --- | --- |
-| `vigil.eth` | [`0x0802bd0d…b15c4f`](https://sepolia.etherscan.io/tx/0x0802bd0daeb44a50588b374a73c685dd6940d699774c1f1436c1807889b15c4f) | Registered + wrapped natively at `block 10821165` for 1 year. Owner `0xf5B1d9144d9D005CD74cFC2d1A22cbAF4e8E8736`. |
-| `agent.vigil.eth` | [`0xe22e4bd6…ae3b36`](https://sepolia.etherscan.io/tx/0xe22e4bd6a620845cd970f833d2932d8d51371f8b5985eba17250dc9c92ae3b36) | Identity records live: `description`, `url`, `vigil.capabilities` (JSON), `vigil.severity-min`. |
-| `demo.vigil.eth` | [`0x0b9772fc…605f99`](https://sepolia.etherscan.io/tx/0x0b9772fc952174d42ab798e6e8bec39ca1c5afaf6707c3d05792de9cf1605f99) | `addr[base-sepolia]` → `0x65953e7c7C8A0Ee61be3b33BD88E2961439B21AD` (demo proxy on Base Sepolia). |
-| ENSIP-19 reverse on Base Sepolia | [`0xe5f947d7…dc9093`](https://sepolia.basescan.org/tx/0xe5f947d7a25c28a856492faaa8b53eb8dc14e155c2d10cbf1a0c105602dc9093) (Base Sepolia, block 41284414) | Demo proxy `0x65953e7c…21AD` → primary name `demo.vigil.eth`. Submitted via `setNameForOwnableWithSignature` on the L2ReverseRegistrar (`0x00000BeEF055f7934784D6d81b6BC86665630dbA`); the proxy is `OwnableUpgradeable` so the deployer wallet's ERC-191 signature authorizes the registrar to set the name on the proxy's behalf — no contract change needed. |
+| `vigil.eth` (registered + wrapped, 1 year) | Sepolia · [`0x0802bd0d…b15c4f`](https://sepolia.etherscan.io/tx/0x0802bd0daeb44a50588b374a73c685dd6940d699774c1f1436c1807889b15c4f), block 10821165 | Owner `0xf5B1d9144d9D005CD74cFC2d1A22cbAF4e8E8736`. Native NameWrapper wrap as part of `register()`. |
+| `agent.vigil.eth` subname + records | Sepolia · [`0xe22e4bd6…ae3b36`](https://sepolia.etherscan.io/tx/0xe22e4bd6a620845cd970f833d2932d8d51371f8b5985eba17250dc9c92ae3b36) | `description`, `url`, `vigil.capabilities` (JSON), `vigil.severity-min=MEDIUM`. |
+| `demo.vigil.eth` subname + records | Sepolia · [`0x0b9772fc…605f99`](https://sepolia.etherscan.io/tx/0x0b9772fc952174d42ab798e6e8bec39ca1c5afaf6707c3d05792de9cf1605f99) | `description`, `vigil.kind=demo-proxy`, ENSIP-11 `addr[base-sepolia]` → `0x65953e7c7C8A0Ee61be3b33BD88E2961439B21AD`. |
+| `vigil.feed` text record | Sepolia · [`0x319da24e…21cee`](https://sepolia.etherscan.io/tx/0x319da24e7cc07f1e78467b6904b35abd6b8798b13343b654a5ee5e2b54521cee) | `agent.vigil.eth → vigil.feed → bzz.limo/feeds/0x4b291F22…/94f6a4be…` for subscriber discovery. |
+| `vigil.payment` text record | Sepolia · [`0x648a93a1…fdc5601e`](https://sepolia.etherscan.io/tx/0x648a93a1079fbc18a6a263ff39d2676eda02a8af3907e084ce840e08fdc5601e) | `agent.vigil.eth → vigil.payment → x402:https://api.vigil.app/pay/per-alert`. Discoverable X402 endpoint, stacks with Apify/Umia narratives. |
+| ENSIP-19 reverse on Base Sepolia | Base Sepolia · [`0xe5f947d7…dc9093`](https://sepolia.basescan.org/tx/0xe5f947d7a25c28a856492faaa8b53eb8dc14e155c2d10cbf1a0c105602dc9093), block 41284414 | Demo proxy → primary name `demo.vigil.eth`. `setNameForOwnableWithSignature` on L2ReverseRegistrar `0x00000BeEF055f7934784D6d81b6BC86665630dbA`; proxy is `OwnableUpgradeable` so deployer wallet's ERC-191 signature authorizes — no contract change needed. |
+| Smoke-test reputation write | Sepolia · 4 setText txs | First populated `demo.vigil.eth` reputation: `vigil.last-severity=CRITICAL`, `vigil.upgrade-count=1`. |
+| Run #2 demo upgrade (live e2e replay) | Base Sepolia · [`0x7ee96f68…7b2f7ead`](https://sepolia.basescan.org/tx/0x7ee96f68d31d3b2c6082d67026327b0d669ce8bcbfdf4fcac1eb348a7b2f7ead), block 41287554 | Agent watching Base Sepolia detected `Upgraded(address)`, ran the full pipeline, emitted CRITICAL alert tagged `demo.vigil.eth`, wrote reputation back (count `1→2`). |
+| Run #2 latest replayable upgrade | Base Sepolia · [`0x311a9136…8e7865b26`](https://sepolia.basescan.org/tx/0x311a9136821a2ed09cc2262da5cbb9623be0795a0e3d29f7dfadfdd8e7865b26), block 41288318, impl [`0xAb180BDA…AA553b`](https://sepolia.basescan.org/address/0xAb180BDA73bAd047e7a3bb7cfCBC11d2BcAA553b#code) | Bumping `VIGIL_DEMO_BUILD` in `DemoTokenV2.sol` lets `npm run upgrade` deploy a fresh impl → new `Upgraded(address)` event the agent picks up, **without** changing the proxy address. Same proxy, replayable demo. |
 
 Verify on the ENS app: <https://app.ens.domains/agent.vigil.eth?network=sepolia>
 

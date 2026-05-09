@@ -96,7 +96,10 @@ export async function processUpgrade(
 
   // Step 1 — verification with retry
   console.log(`\n[Pipeline] Step 1/4 — Checking Sourcify verification (up to 3 retries, 30s apart)...`);
-  const verified = await isVerifiedWithRetry(newImplAddress, chainId, 3, 30_000);
+  // 2 retries × 15s = 30s ceiling before falling through to the unverified
+  // path. Tighter than the previous 3×30s = 90s because for a live booth
+  // demo, 90s of "Sourcify retrying..." dead air kills the pacing.
+  const verified = await isVerifiedWithRetry(newImplAddress, chainId, 2, 15_000);
 
   if (!verified) {
     console.log(`[Pipeline] Not verified after retries — checking for similar contracts...`);
