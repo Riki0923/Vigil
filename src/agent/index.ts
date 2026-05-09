@@ -207,7 +207,7 @@ async function main(): Promise<void> {
   console.log(`[Vigil] Connected to network: ${network.name} (chainId: ${network.chainId})`);
   console.log(`[Vigil] Current block: ${blockNumber}`);
 
-  initSwarm();
+  await initSwarm();
 
   await startUpgradeWatcher(
     provider,
