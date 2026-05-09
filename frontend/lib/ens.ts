@@ -1,14 +1,44 @@
-// Server-side ENS reader for the dashboard. Resolves vigil.eth subnames on
-// Ethereum Sepolia via viem, returns plain JSON the client can render.
+// Server-side ENS reader for the dashboard. Resolves vigil parent subnames
+// via viem, returns plain JSON the client can render.
+//
+// Network is selected by VIGIL_ENS_NETWORK ("mainnet" reads vigilbot.eth on
+// Ethereum mainnet, "sepolia" reads vigil.eth on Sepolia). Default: mainnet.
 //
 // Mirrors src/ens/records.ts (agent runtime) but lives in the frontend tree
 // because frontend uses viem, not ethers. Single source of truth for the
 // keys is this file plus its agent-side counterpart.
 
 import { createPublicClient, http } from "viem";
-import { sepolia } from "viem/chains";
+import { mainnet, sepolia } from "viem/chains";
 
-const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL;
+type EnsNetwork = "mainnet" | "sepolia";
+
+function getActiveNetwork(): EnsNetwork {
+  const v = process.env.VIGIL_ENS_NETWORK?.toLowerCase();
+  if (v === "sepolia") return "sepolia";
+  return "mainnet";
+}
+
+function getNetworkRpc(network: EnsNetwork): string | undefined {
+  if (network === "mainnet") {
+    return process.env.MAINNET_RPC_URL;
+  }
+  return process.env.SEPOLIA_RPC_URL;
+}
+
+function getDefaultParentName(network: EnsNetwork): string {
+  if (network === "mainnet") {
+    return process.env.VIGIL_PARENT_ENS_NAME_MAINNET ?? "vigilbot.eth";
+  }
+  return process.env.VIGIL_PARENT_ENS_NAME ?? "vigil.eth";
+}
+
+function getDefaultAgentName(network: EnsNetwork): string {
+  if (network === "mainnet") {
+    return process.env.VIGIL_AGENT_ENS_NAME_MAINNET ?? `agent.${getDefaultParentName(network)}`;
+  }
+  return process.env.VIGIL_AGENT_ENS_NAME ?? `agent.${getDefaultParentName(network)}`;
+}
 
 const RECORD_KEYS = {
   description: "description",
@@ -24,8 +54,14 @@ const RECORD_KEYS = {
   upgradeCount: "vigil.upgrade-count",
 } as const;
 
-// ENSIP-11 multichain coin type for Base Sepolia.
+// ENSIP-11 multichain coin types — the demo proxy address record is keyed on
+// whichever Base chain matches the active ENS network.
+const BASE_MAINNET_COIN_TYPE = BigInt(0x80000000) | BigInt(8453);
 const BASE_SEPOLIA_COIN_TYPE = BigInt(0x80000000) | BigInt(84532);
+
+function getBaseCoinType(network: EnsNetwork): bigint {
+  return network === "mainnet" ? BASE_MAINNET_COIN_TYPE : BASE_SEPOLIA_COIN_TYPE;
+}
 
 export type AgentCapabilities = {
   watch: string[];
@@ -55,10 +91,12 @@ export type TargetReputation = {
 };
 
 function getClient() {
-  if (!SEPOLIA_RPC_URL) return null;
+  const network = getActiveNetwork();
+  const rpc = getNetworkRpc(network);
+  if (!rpc) return null;
   return createPublicClient({
-    chain: sepolia,
-    transport: http(SEPOLIA_RPC_URL),
+    chain: network === "mainnet" ? mainnet : sepolia,
+    transport: http(rpc),
   });
 }
 
@@ -90,7 +128,7 @@ async function readText(
 }
 
 export async function fetchAgentIdentity(
-  name = "agent.vigil.eth",
+  name: string = getDefaultAgentName(getActiveNetwork()),
 ): Promise<AgentIdentity | null> {
   const client = getClient();
   if (!client) return null;
@@ -117,6 +155,8 @@ export async function fetchAgentIdentity(
 export async function fetchTargetReputation(name: string): Promise<TargetReputation | null> {
   const client = getClient();
   if (!client) return null;
+  const network = getActiveNetwork();
+  const baseCoinType = getBaseCoinType(network);
   const [description, kind, lastSeverity, lastUpgradeAt, lastTx, upgradeCountRaw, addrRaw] =
     await Promise.all([
       readText(client, name, RECORD_KEYS.description),
@@ -125,9 +165,7 @@ export async function fetchTargetReputation(name: string): Promise<TargetReputat
       readText(client, name, RECORD_KEYS.lastUpgradeAt),
       readText(client, name, RECORD_KEYS.lastTx),
       readText(client, name, RECORD_KEYS.upgradeCount),
-      client
-        .getEnsAddress({ name, coinType: BASE_SEPOLIA_COIN_TYPE })
-        .catch(() => null),
+      client.getEnsAddress({ name, coinType: baseCoinType }).catch(() => null),
     ]);
   const upgradeCount = upgradeCountRaw ? parseInt(upgradeCountRaw, 10) : 0;
   return {
@@ -156,9 +194,16 @@ export async function fetchTargetReputations(
   return map;
 }
 
+const activeNetwork = getActiveNetwork();
 export const ENS_CONFIG = {
-  parentName: process.env.VIGIL_PARENT_ENS_NAME ?? "vigil.eth",
-  agentName: process.env.VIGIL_AGENT_ENS_NAME ?? "agent.vigil.eth",
-  chainId: sepolia.id,
+  parentName: getDefaultParentName(activeNetwork),
+  agentName: getDefaultAgentName(activeNetwork),
+  chainId: activeNetwork === "mainnet" ? mainnet.id : sepolia.id,
   appUrlBase: "https://app.ens.domains",
+  // UI helpers — keep components free of network-flag conditionals.
+  network: activeNetwork,
+  networkParam: activeNetwork === "mainnet" ? "mainnet" : "sepolia",
+  networkLabel: activeNetwork === "mainnet" ? "Ethereum Mainnet" : "Ethereum Sepolia",
+  baseAddrLabel: activeNetwork === "mainnet" ? "addr[base-mainnet]" : "addr[base-sepolia]",
+  rpcEnvName: activeNetwork === "mainnet" ? "MAINNET_RPC_URL" : "SEPOLIA_RPC_URL",
 };
