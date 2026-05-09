@@ -4,6 +4,8 @@ node_modules
 docs/*
 !docs/integrations/
 !docs/integrations/**
+!docs/superpowers/
+!docs/superpowers/**
 data/
 demo-target/deployments/
 .claude/*.lock
