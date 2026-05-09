@@ -26,28 +26,32 @@ export function ConnectButton() {
     );
   }
 
-  if (DEMO_WALLET) {
-    return (
-      <button
-        onClick={() => connect({ connector: injected() })}
-        disabled={isPending}
-        className="brand-border bg-white/60 hover:bg-white/80 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-mono text-brand transition-colors"
-        title="Click to connect a real wallet for signing"
-      >
-        <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--severity-medium)]" />
-        {truncate(DEMO_WALLET)}
-        <span className="text-brand-soft uppercase tracking-wider text-[10px]">demo</span>
-      </button>
-    );
-  }
-
-  return (
+  const connectBtn = (
     <button
       onClick={() => connect({ connector: injected() })}
       disabled={isPending}
       className="btn-brand inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs"
+      title="Connect an injected wallet (e.g. MetaMask). Once connected, alerts and revoke txs use that wallet."
     >
       {isPending ? "Connecting…" : "Connect wallet"}
     </button>
   );
+
+  if (DEMO_WALLET) {
+    return (
+      <div className="flex items-center gap-2">
+        <span
+          className="brand-border bg-white/60 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-mono text-brand"
+          title="Demo wallet — used for the embedded demo flow until you connect your own wallet"
+        >
+          <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--severity-medium)]" />
+          {truncate(DEMO_WALLET)}
+          <span className="text-brand-soft uppercase tracking-wider text-[10px]">demo</span>
+        </span>
+        {connectBtn}
+      </div>
+    );
+  }
+
+  return connectBtn;
 }
