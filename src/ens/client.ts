@@ -69,10 +69,10 @@ export function getSepoliaSigner(): ethers.Wallet {
 
 export function getMainnetProvider(): ethers.JsonRpcProvider {
   if (cachedMainnetProvider) return cachedMainnetProvider;
-  const url = process.env.MAINNET_RPC_URL;
+  const url = process.env.ETH_MAINNET_RPC_URL;
   if (!url) {
     throw new Error(
-      "MAINNET_RPC_URL is not set — required for ENS resolution on Ethereum mainnet",
+      "ETH_MAINNET_RPC_URL is not set — required for ENS resolution on Ethereum mainnet",
     );
   }
   cachedMainnetProvider = new ethers.JsonRpcProvider(url, ENS_MAINNET.chainId);
@@ -80,7 +80,7 @@ export function getMainnetProvider(): ethers.JsonRpcProvider {
 }
 
 export function hasMainnetProvider(): boolean {
-  return Boolean(process.env.MAINNET_RPC_URL);
+  return Boolean(process.env.ETH_MAINNET_RPC_URL);
 }
 
 export function getMainnetSigner(): ethers.Wallet {

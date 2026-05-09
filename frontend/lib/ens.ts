@@ -21,7 +21,7 @@ function getActiveNetwork(): EnsNetwork {
 
 function getNetworkRpc(network: EnsNetwork): string | undefined {
   if (network === "mainnet") {
-    return process.env.MAINNET_RPC_URL;
+    return process.env.ETH_MAINNET_RPC_URL;
   }
   return process.env.SEPOLIA_RPC_URL;
 }
@@ -205,5 +205,5 @@ export const ENS_CONFIG = {
   networkParam: activeNetwork === "mainnet" ? "mainnet" : "sepolia",
   networkLabel: activeNetwork === "mainnet" ? "Ethereum Mainnet" : "Ethereum Sepolia",
   baseAddrLabel: activeNetwork === "mainnet" ? "addr[base-mainnet]" : "addr[base-sepolia]",
-  rpcEnvName: activeNetwork === "mainnet" ? "MAINNET_RPC_URL" : "SEPOLIA_RPC_URL",
+  rpcEnvName: activeNetwork === "mainnet" ? "ETH_MAINNET_RPC_URL" : "SEPOLIA_RPC_URL",
 };

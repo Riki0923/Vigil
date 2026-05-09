@@ -43,13 +43,13 @@ function parseArgs(argv: string[]): CliArgs {
 
   const from = args.from ? parseInt(args.from, 10) : NaN;
   const to = args.to ? parseInt(args.to, 10) : NaN;
-  const rpc = args.rpc ?? process.env.RPC_URL ?? "";
+  const rpc = args.rpc ?? process.env.BASE_MAINNET_RPC_URL ?? "";
 
   if (!Number.isInteger(from) || !Number.isInteger(to) || from > to) {
     throw new Error("Pass --from <n> --to <n> with from <= to");
   }
   if (!rpc) {
-    throw new Error("Pass --rpc <url> or set RPC_URL in .env");
+    throw new Error("Pass --rpc <url> or set BASE_MAINNET_RPC_URL in .env");
   }
 
   return { from, to, rpc, ...(args.topic ? { topic: args.topic } : {}) };

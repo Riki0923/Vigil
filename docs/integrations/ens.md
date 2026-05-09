@@ -196,7 +196,7 @@ No Vigil-controlled endpoint is involved.
 | --- | --- | --- |
 | `VIGIL_ENS_NETWORK` | No (defaults: agent → `sepolia`, frontend → `mainnet`) | `mainnet` or `sepolia`. Selects which parent the runtime reads from. |
 | `SEPOLIA_RPC_URL` | Yes when `VIGIL_ENS_NETWORK=sepolia` | Ethereum Sepolia JSON-RPC endpoint. Used for reads + writes against `vigil.eth`. |
-| `MAINNET_RPC_URL` | Yes when `VIGIL_ENS_NETWORK=mainnet` | Ethereum mainnet JSON-RPC endpoint. Used for reads + writes against `vigilbot.eth`. |
+| `ETH_MAINNET_RPC_URL` | Yes when `VIGIL_ENS_NETWORK=mainnet` | Ethereum mainnet JSON-RPC endpoint. Used for reads + writes against `vigilbot.eth`. |
 | `ENS_REGISTRAR_PRIVATE_KEY` | For write operations only | Wallet that owns the parent name. The same key signs both Sepolia and mainnet writes; it must own `vigil.eth` on Sepolia and/or `vigilbot.eth` on mainnet for the corresponding network's writes to succeed. |
 | `VIGIL_PARENT_ENS_NAME` | No (default `vigil.eth`) | Override for the Sepolia parent name. |
 | `VIGIL_PARENT_ENS_NAME_MAINNET` | No (default `vigilbot.eth`) | Override for the mainnet parent name. |

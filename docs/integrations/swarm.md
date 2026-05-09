@@ -171,7 +171,7 @@ Full reference: [`src/libs/chain-archive/README.md`](../../src/libs/chain-archiv
 
 ```bash
 SWARM_PRIVATE_KEY=<hex> \
-RPC_URL=<json-rpc-url> \
+BASE_MAINNET_RPC_URL=<json-rpc-url> \
 npm run archive:backfill -- --from <n> --to <n> [--topic <name>]
 ```
 

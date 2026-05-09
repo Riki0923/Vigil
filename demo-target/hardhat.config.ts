@@ -5,8 +5,8 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
-const RPC_URL = process.env.RPC_URL ?? "";
-const RPC_URL_BASE_MAINNET = process.env.RPC_URL_BASE_MAINNET ?? "";
+const BASE_SEPOLIA_RPC_URL = process.env.BASE_SEPOLIA_RPC_URL ?? "";
+const BASE_MAINNET_RPC_URL = process.env.BASE_MAINNET_RPC_URL ?? "";
 const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY ?? "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY ?? "";
 
@@ -21,12 +21,12 @@ const config: HardhatUserConfig = {
   },
   networks: {
     baseSepolia: {
-      url: RPC_URL,
+      url: BASE_SEPOLIA_RPC_URL,
       chainId: 84532,
       accounts,
     },
     baseMainnet: {
-      url: RPC_URL_BASE_MAINNET,
+      url: BASE_MAINNET_RPC_URL,
       chainId: 8453,
       accounts,
     },

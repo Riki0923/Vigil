@@ -28,7 +28,7 @@ import {
 
 dotenv.config();
 
-const RPC_URL = process.env.RPC_URL!;
+const RPC_URL = process.env.BASE_MAINNET_RPC_URL!;
 
 // Picks the agent ENS name matching the active VIGIL_ENS_NETWORK so the boot
 // reads from agent.vigilbot.eth on mainnet and agent.vigil.eth on sepolia

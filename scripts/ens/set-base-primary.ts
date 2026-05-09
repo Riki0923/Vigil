@@ -69,8 +69,8 @@ function getNetworkConfig(network: BaseNetwork): NetworkConfig {
   if (network === "base-mainnet") {
     return {
       chainId: 8453n,
-      rpcUrl: process.env.BASE_MAINNET_RPC_URL ?? process.env.RPC_URL_BASE_MAINNET ?? process.env.RPC_URL,
-      rpcEnvHint: "BASE_MAINNET_RPC_URL or RPC_URL_BASE_MAINNET",
+      rpcUrl: process.env.BASE_MAINNET_RPC_URL,
+      rpcEnvHint: "BASE_MAINNET_RPC_URL",
       privateKey: process.env.BASE_MAINNET_PRIVATE_KEY ?? process.env.ENS_REGISTRAR_PRIVATE_KEY ?? process.env.DEPLOYER_PRIVATE_KEY,
       pkEnvHint: "BASE_MAINNET_PRIVATE_KEY or ENS_REGISTRAR_PRIVATE_KEY",
       reverseRegistrar: "0x0000000000D8e504002cC26E3Ec46D81971C1664",
@@ -81,7 +81,7 @@ function getNetworkConfig(network: BaseNetwork): NetworkConfig {
   }
   return {
     chainId: 84532n,
-    rpcUrl: process.env.BASE_SEPOLIA_RPC_URL ?? process.env.RPC_URL,
+    rpcUrl: process.env.BASE_SEPOLIA_RPC_URL,
     rpcEnvHint: "BASE_SEPOLIA_RPC_URL",
     privateKey: process.env.BASE_SEPOLIA_PRIVATE_KEY ?? process.env.ENS_REGISTRAR_PRIVATE_KEY ?? process.env.DEPLOYER_PRIVATE_KEY,
     pkEnvHint: "BASE_SEPOLIA_PRIVATE_KEY or ENS_REGISTRAR_PRIVATE_KEY",

@@ -117,7 +117,7 @@ The recomputation step is intentionally out of scope for this library; it is the
 The Vigil repository includes a backfill CLI at [`scripts/chain-archive/backfill.ts`](../../../scripts/chain-archive/backfill.ts) that ingests a contiguous block range from any JSON-RPC endpoint:
 
 ```bash
-RPC_URL=https://base-mainnet.g.alchemy.com/v2/KEY \
+BASE_MAINNET_RPC_URL=https://base-mainnet.g.alchemy.com/v2/KEY \
 SWARM_PRIVATE_KEY=0x... \
 tsx scripts/chain-archive/backfill.ts --from <n> --to <n> [--topic <name>]
 ```

@@ -6,7 +6,7 @@ let cachedProvider: ethers.JsonRpcProvider | null = null;
 
 function getProvider(): ethers.JsonRpcProvider | null {
   if (cachedProvider) return cachedProvider;
-  const url = process.env.RPC_URL;
+  const url = process.env.BASE_MAINNET_RPC_URL;
   if (!url) return null;
   cachedProvider = new ethers.JsonRpcProvider(url);
   return cachedProvider;

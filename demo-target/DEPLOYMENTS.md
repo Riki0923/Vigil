@@ -60,7 +60,7 @@ Both implementations are verified on **Sourcify** and **Basescan** (Etherscan v2
 
 ### Replaying a Sepolia upgrade in Vigil
 
-In [`src/watchers/upgradeWatcher.ts`](../src/watchers/upgradeWatcher.ts), temporarily pin the scan range to the upgrade block, point the agent's `RPC_URL` at Base Sepolia (`https://sepolia.base.org`), and restart. The watcher will surface the same `Upgraded(address)` event the live trigger fired.
+In [`src/watchers/upgradeWatcher.ts`](../src/watchers/upgradeWatcher.ts), temporarily pin the scan range to the upgrade block, point the agent's `BASE_MAINNET_RPC_URL` at Base Sepolia (`https://sepolia.base.org`), and restart. The watcher will surface the same `Upgraded(address)` event the live trigger fired.
 
 ```ts
 const logs = await provider.getLogs({
@@ -70,7 +70,7 @@ const logs = await provider.getLogs({
 });
 ```
 
-Revert the scan range and `RPC_URL` after the test.
+Revert the scan range and `BASE_MAINNET_RPC_URL` after the test.
 
 ### Adding more Sepolia runs
 
