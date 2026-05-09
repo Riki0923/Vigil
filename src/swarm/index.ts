@@ -42,13 +42,13 @@ export async function publishAlert(alert: any): Promise<string | null> {
 
   try {
     const json = JSON.stringify(alert);
-    const uploadResult = await bee.uploadFile(NULL_STAMP, Buffer.from(json), 'alert.json', { contentType: 'application/json' });
+    const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
     const reference = uploadResult.reference;
 
     const writer = bee.makeFeedWriter(alertTopic, privateKey);
     await writer.uploadReference(NULL_STAMP, reference);
 
-    const url = `${BZZ_LIMO}/bzz/${reference.toHex()}`;
+    const url = `${BZZ_LIMO}/bytes/${reference.toHex()}`;
     console.log(`[Swarm] Alert published: ${url}`);
     return url;
   } catch (err) {
@@ -65,14 +65,14 @@ export async function publishBlock(blockData: any, blockNumber: number): Promise
 
   try {
     const json = JSON.stringify(blockData);
-    const uploadResult = await bee.uploadFile(NULL_STAMP, Buffer.from(json), 'block.json', { contentType: 'application/json' });
+    const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
     const reference = uploadResult.reference;
 
     const blockTopic = Topic.fromString(`vigil-blocks-${blockNumber}`);
     const writer = bee.makeFeedWriter(blockTopic, privateKey);
     await writer.uploadReference(NULL_STAMP, reference);
 
-    const url = `${BZZ_LIMO}/bzz/${reference.toHex()}`;
+    const url = `${BZZ_LIMO}/bytes/${reference.toHex()}`;
     console.log(`[Swarm] Block ${blockNumber} archived: ${url}`);
     return url;
   } catch (err) {
