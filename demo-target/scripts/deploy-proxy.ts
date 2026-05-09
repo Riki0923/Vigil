@@ -3,6 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { getNetworkPaths } from "./lib/paths";
+import { makeLogger } from "./lib/log";
+
+const log = makeLogger("deploy-proxy");
 
 interface DeploymentRecord {
   proxyAddress: string;
@@ -17,25 +20,25 @@ interface DeploymentRecord {
 
 async function main(): Promise<void> {
   const paths = getNetworkPaths(hre);
-  console.log(`[deploy-proxy] Network:  ${paths.name} (chainId ${paths.chainId})`);
+  log.start(`Network:  ${paths.name} (chainId ${paths.chainId})`);
 
   if (fs.existsSync(paths.deploymentsPath)) {
     const existing: DeploymentRecord = JSON.parse(
       fs.readFileSync(paths.deploymentsPath, "utf8"),
     );
-    console.log("[deploy-proxy] Existing deployment found:");
-    console.log(JSON.stringify(existing, null, 2));
-    console.log(
-      `[deploy-proxy] Skipping deploy. Delete ${path.relative(process.cwd(), paths.deploymentsPath)} to redeploy.`,
+    log.info("Existing deployment found:");
+    log.info(JSON.stringify(existing, null, 2));
+    log.hint(
+      `Skipping deploy. Delete ${path.relative(process.cwd(), paths.deploymentsPath)} to redeploy.`,
     );
     return;
   }
 
   const [deployer] = await ethers.getSigners();
-  console.log(`[deploy-proxy] Deployer: ${deployer.address}`);
+  log.info(`Deployer: ${deployer.address}`);
 
   const balance = await ethers.provider.getBalance(deployer.address);
-  console.log(`[deploy-proxy] Balance:  ${ethers.formatEther(balance)} ETH`);
+  log.info(`Balance:  ${ethers.formatEther(balance)} ETH`);
   if (balance === 0n) {
     throw new Error(
       `Deployer has 0 ETH on ${paths.name}. Fund the wallet${paths.name === "baseSepolia" ? " from a faucet" : ""} first.`,
@@ -45,7 +48,7 @@ async function main(): Promise<void> {
   const initialSupply = ethers.parseEther("1000");
   const mintCap = ethers.parseEther("1000000");
 
-  console.log("[deploy-proxy] Deploying V1 + UUPS proxy...");
+  log.step("Deploying V1 + UUPS proxy...");
   const V1 = await ethers.getContractFactory("DemoTokenV1");
   const proxy = await upgrades.deployProxy(
     V1,
@@ -70,27 +73,27 @@ async function main(): Promise<void> {
   fs.mkdirSync(path.dirname(paths.deploymentsPath), { recursive: true });
   fs.writeFileSync(paths.deploymentsPath, JSON.stringify(record, null, 2));
 
-  console.log(`[deploy-proxy] Proxy:    ${proxyAddress}`);
-  console.log(`[deploy-proxy] V1 impl:  ${v1ImplAddress}`);
-  console.log(`[deploy-proxy] Block:    ${record.deployBlockNumber}`);
-  console.log(`[deploy-proxy] Explorer: ${paths.explorerBase}/address/${proxyAddress}`);
+  log.deploy(`Proxy:    ${proxyAddress}`);
+  log.deploy(`V1 impl:  ${v1ImplAddress}`);
+  log.info(`Block:    ${record.deployBlockNumber}`);
+  log.info(`Explorer: ${paths.explorerBase}/address/${proxyAddress}`);
 
-  console.log("[deploy-proxy] Verifying V1 impl on Sourcify...");
+  log.step("Verifying V1 impl on Sourcify...");
   try {
     await hre.run("verify:verify", {
       address: v1ImplAddress,
       constructorArguments: [],
     });
-    console.log("[deploy-proxy] V1 impl verified.");
+    log.ok("V1 impl verified.");
   } catch (err) {
-    console.warn("[deploy-proxy] Sourcify verification failed:", err);
-    console.warn(
-      `[deploy-proxy] Re-run manually: npx hardhat verify --network ${paths.name} ${v1ImplAddress}`,
+    log.warn(`Sourcify verification failed: ${err instanceof Error ? err.message : String(err)}`);
+    log.hint(
+      `Re-run manually: npx hardhat verify --network ${paths.name} ${v1ImplAddress}`,
     );
   }
 }
 
 main().catch((err) => {
-  console.error(err);
+  log.error("deploy-proxy failed", err);
   process.exit(1);
 });

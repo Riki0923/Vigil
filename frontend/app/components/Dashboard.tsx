@@ -11,6 +11,8 @@ import { AgentIdentityCard } from "./AgentIdentityCard";
 import { UpgradesChart, type ChartBucket } from "./UpgradesChart";
 import { ConnectButton } from "./ConnectButton";
 import { ChainSelector } from "./ChainSelector";
+import { HeroThreatBanner } from "./HeroThreatBanner";
+import { NarrativeStrip } from "./NarrativeStrip";
 import { useViewChain } from "./ViewChainContext";
 
 function buildChartData(alerts: Alert[]): ChartBucket[] {
@@ -71,9 +73,6 @@ export function Dashboard({
     .filter((b): b is number => typeof b === "number");
   const latestBlock = blockNumbers.length > 0 ? Math.max(...blockNumbers) : null;
 
-  const totalUpgrades = alerts.length;
-  const criticalAlerts = alerts.filter((a) => a.severity === "CRITICAL").length;
-  const unverifiedContracts = alerts.filter((a) => !a.isVerified).length;
   const chartData = buildChartData(alerts);
 
   const chainLabel =
@@ -158,13 +157,11 @@ export function Dashboard({
             </div>
           </div>
 
-          <AgentIdentityCard identity={agentIdentity} />
+          <HeroThreatBanner alerts={alerts} />
 
-          <div className="mb-5 grid grid-cols-3 gap-3">
-            <StatCard label="Total Upgrades Detected" value={totalUpgrades} />
-            <StatCard label="Critical Alerts" value={criticalAlerts} accent="critical" />
-            <StatCard label="Unverified Contracts" value={unverifiedContracts} accent="high" />
-          </div>
+          <NarrativeStrip alerts={alerts} agentIdentity={agentIdentity} />
+
+          <AgentIdentityCard identity={agentIdentity} />
 
           <div className="mb-6">
             <UpgradesChart data={chartData} />
@@ -181,43 +178,3 @@ export function Dashboard({
   );
 }
 
-function StatCard({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent?: "critical" | "high";
-}) {
-  const numberColor =
-    accent === "critical"
-      ? "text-[var(--severity-critical)]"
-      : accent === "high"
-        ? "text-[var(--severity-high)]"
-        : "text-brand";
-
-  const topLineColor =
-    accent === "critical"
-      ? "var(--severity-critical)"
-      : accent === "high"
-        ? "var(--severity-high)"
-        : "var(--brand-navy)";
-
-  return (
-    <div className="card group relative overflow-hidden rounded-lg px-5 py-4">
-      <div
-        className="absolute inset-x-0 top-0 h-[2px] opacity-70 transition-opacity group-hover:opacity-100"
-        style={{ background: topLineColor }}
-      />
-      <div
-        className={`font-display text-3xl font-bold tabular-nums leading-none ${numberColor}`}
-      >
-        {value}
-      </div>
-      <div className="text-brand-soft mt-2 text-xs uppercase tracking-wider">
-        {label}
-      </div>
-    </div>
-  );
-}
