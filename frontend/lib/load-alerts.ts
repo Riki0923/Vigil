@@ -5,6 +5,9 @@ import type { Alert } from "./types";
 import { mockAlerts } from "./mock-alerts";
 import { seedAlertsBaseSepolia, seedAlertsBaseSepoliaUpdatedAt } from "./seed-alerts";
 
+const SWARM_FEED_URL = process.env.SWARM_FEED_URL;
+const SWARM_FETCH_TIMEOUT_MS = 5_000;
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "../..");
 const ALERTS_FILE = path.join(REPO_ROOT, "data", "alerts.json");
@@ -18,6 +21,32 @@ export type LoadAlertsResult = {
   source: "live" | "mock";
   updatedAt?: string;
 };
+
+function isAlert(value: unknown): value is Alert {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.id === "string" &&
+    typeof v.txHash === "string" &&
+    typeof v.severity === "string"
+  );
+}
+
+async function fetchLatestFromSwarm(url: string): Promise<Alert | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SWARM_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return isAlert(data) ? data : null;
+  } catch (err) {
+    console.warn("[loadAlerts] Swarm fetch failed:", err);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 async function readAlertsFile(filePath: string, defaultChainId: number): Promise<{
   alerts: Alert[];
@@ -41,7 +70,8 @@ async function readAlertsFile(filePath: string, defaultChainId: number): Promise
 }
 
 export async function loadAlerts(): Promise<LoadAlertsResult> {
-  const [main, sepoliaFile] = await Promise.all([
+  const [swarmLatest, main, sepoliaFile] = await Promise.all([
+    SWARM_FEED_URL ? fetchLatestFromSwarm(SWARM_FEED_URL) : Promise.resolve(null),
     readAlertsFile(ALERTS_FILE, BASE_CHAIN_ID),
     readAlertsFile(ALERTS_SEPOLIA_FILE, BASE_SEPOLIA_CHAIN_ID),
   ]);
@@ -53,19 +83,31 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
     };
 
   const merged: Alert[] = [];
+  if (swarmLatest) merged.push(swarmLatest);
   if (main) merged.push(...main.alerts);
   if (sepolia) merged.push(...sepolia.alerts);
 
-  if (merged.length === 0) {
+  const seen = new Set<string>();
+  const deduped = merged.filter((a) => {
+    if (seen.has(a.txHash)) return false;
+    seen.add(a.txHash);
+    return true;
+  });
+
+  if (deduped.length === 0) {
     return { alerts: mockAlerts, source: "mock" };
   }
 
-  merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  deduped.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  const latestUpdated = [main?.updatedAt, sepolia?.updatedAt]
+  const latestUpdated = [
+    swarmLatest ? new Date().toISOString() : undefined,
+    main?.updatedAt,
+    sepolia?.updatedAt,
+  ]
     .filter((v): v is string => Boolean(v))
     .sort()
     .pop();
 
-  return { alerts: merged, source: "live", updatedAt: latestUpdated };
+  return { alerts: deduped, source: "live", updatedAt: latestUpdated };
 }
