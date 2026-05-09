@@ -135,7 +135,14 @@ function AlertCard({ alert, onAskAI }: { alert: Alert; onAskAI: () => void }) {
                 rel="noreferrer"
                 className="font-mono transition-colors hover:text-brand"
               >
-                proxy {truncateAddress(alert.proxyAddress)}
+                {alert.proxyName ? (
+                  <>
+                    <span className="text-brand">{alert.proxyName}</span>
+                    <span className="text-brand-soft"> ({truncateAddress(alert.proxyAddress)})</span>
+                  </>
+                ) : (
+                  <>proxy {truncateAddress(alert.proxyAddress)}</>
+                )}
               </a>
               <CopyButton text={alert.proxyAddress} />
             </span>

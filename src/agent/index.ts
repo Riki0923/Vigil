@@ -16,10 +16,17 @@ import { createAlert, AlertSeverity } from "../alerts/index.js";
 import { emitAlert } from "../delivery/emit.js";
 import { analyseUpgrade } from "./analyser.js";
 import { initSwarm, publishAlert, publishBlock } from "../swarm/index.js";
+import {
+  hasSepoliaProvider,
+  loadEnsCache,
+  lookupName,
+  resolveAgentConfig,
+} from "../ens/index.js";
 
 dotenv.config();
 
 const RPC_URL = process.env.RPC_URL!;
+const VIGIL_AGENT_ENS_NAME = process.env.VIGIL_AGENT_ENS_NAME ?? "agent.vigil.eth";
 
 const SEVERITY_ORDER: AlertSeverity[] = [
   AlertSeverity.LOW,
@@ -45,10 +52,15 @@ export async function processUpgrade(
   newImplAddress: string,
   oldImplAddress: string,
   provider: ethers.JsonRpcProvider,
-  block: ethers.Block
+  block: ethers.Block,
+  proxyName: string | null = null,
+  severityFloor: AlertSeverity | null = null,
 ): Promise<void> {
   console.log(`\n[Pipeline] ── Upgrade detected ───────────────────────`);
   console.log(`  Tx:       ${txHash}`);
+  if (proxyName) {
+    console.log(`  Name:     ${proxyName}`);
+  }
   console.log(`  Proxy:    ${proxyAddress}`);
   console.log(`  Old impl: ${oldImplAddress}`);
   console.log(`  New impl: ${newImplAddress}`);
@@ -88,6 +100,7 @@ export async function processUpgrade(
     await emitAlert(createAlert({
       severity: AlertSeverity.CRITICAL,
       proxyAddress,
+      ...(proxyName ? { proxyName } : {}),
       implementationAddress: newImplAddress,
       txHash,
       isVerified: false,
@@ -150,6 +163,17 @@ export async function processUpgrade(
 
   console.log(`[Pipeline] Final severity: ${severity}`);
 
+  if (severityFloor) {
+    const floorIdx = SEVERITY_ORDER.indexOf(severityFloor);
+    const sevIdx = SEVERITY_ORDER.indexOf(severity);
+    if (sevIdx < floorIdx) {
+      console.log(
+        `[Pipeline] Filtered: ${severity} below threshold ${severityFloor} (set on agent.vigil.eth) — skipping AI + publish`,
+      );
+      return;
+    }
+  }
+
   if (functionRiskFlags.length > 0) {
     console.log(`[Pipeline] Function risk flags:`);
     for (const flag of functionRiskFlags) {
@@ -173,6 +197,7 @@ export async function processUpgrade(
   const alert = createAlert({
     severity,
     proxyAddress,
+    ...(proxyName ? { proxyName } : {}),
     implementationAddress: newImplAddress,
     txHash,
     isVerified: true,
@@ -199,6 +224,47 @@ export async function processUpgrade(
   await emitAlert(alert, block.number);
 }
 
+async function bootEnsConfig(): Promise<{
+  nameResolver: (address: string) => string | null;
+  severityFloor: AlertSeverity | null;
+}> {
+  if (!hasSepoliaProvider()) {
+    console.log("[Vigil/ENS] SEPOLIA_RPC_URL not set — running without ENS identity (no severity filter, no name tagging)");
+    return { nameResolver: () => null, severityFloor: null };
+  }
+
+  console.log(`[Vigil/ENS] Reading agent identity from ${VIGIL_AGENT_ENS_NAME}...`);
+  let severityFloor: AlertSeverity | null = null;
+  try {
+    const config = await resolveAgentConfig(VIGIL_AGENT_ENS_NAME);
+    if (!config) {
+      console.warn(`[Vigil/ENS] No resolver set for ${VIGIL_AGENT_ENS_NAME} — skipping`);
+    } else {
+      if (config.description) console.log(`  description:   ${config.description}`);
+      if (config.url) console.log(`  url:           ${config.url}`);
+      if (config.feed) console.log(`  feed:          ${config.feed}`);
+      if (config.payment) console.log(`  payment:       ${config.payment}`);
+      if (config.severityMin) console.log(`  severity-min:  ${config.severityMin}`);
+      if (config.capabilities) {
+        console.log(`  capabilities:  watch=${config.capabilities.watch.join(",")} chains=${config.capabilities.chains.join(",")} output=${config.capabilities.output.join(",")}`);
+      }
+      severityFloor = config.severityMin;
+    }
+  } catch (err) {
+    console.warn(`[Vigil/ENS] Failed to resolve ${VIGIL_AGENT_ENS_NAME}:`, err);
+  }
+
+  const cache = await loadEnsCache();
+  const cacheSize = Object.keys(cache).length;
+  console.log(`[Vigil/ENS] Loaded ${cacheSize} target name(s) from data/ens-targets.json`);
+  console.log(`[Vigil/ENS] Alert severity floor: ${severityFloor ?? "none (all alerts emitted)"}`);
+
+  return {
+    nameResolver: (address: string) => lookupName(cache, address),
+    severityFloor,
+  };
+}
+
 async function main(): Promise<void> {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const network = await provider.getNetwork();
@@ -207,12 +273,24 @@ async function main(): Promise<void> {
   console.log(`[Vigil] Connected to network: ${network.name} (chainId: ${network.chainId})`);
   console.log(`[Vigil] Current block: ${blockNumber}`);
 
+  const { nameResolver, severityFloor } = await bootEnsConfig();
+
   await initSwarm();
 
   await startUpgradeWatcher(
     provider,
-    (txHash, proxyAddress, newImplAddress, oldImplAddress, block) =>
-      processUpgrade(txHash, proxyAddress, newImplAddress, oldImplAddress, provider, block)
+    (txHash, proxyAddress, newImplAddress, oldImplAddress, block, proxyName) =>
+      processUpgrade(
+        txHash,
+        proxyAddress,
+        newImplAddress,
+        oldImplAddress,
+        provider,
+        block,
+        proxyName,
+        severityFloor,
+      ),
+    nameResolver,
   );
 }
 
