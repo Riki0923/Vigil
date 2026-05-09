@@ -6,14 +6,14 @@ Proxy upgrades are one of the most exploited surfaces in DeFi. Auditors are slow
 
 ## How it works
 
-Vigil watches every block on **Base mainnet** for EIP-1967 `Upgraded(address)` events. When one fires, the pipeline runs:
+Vigil watches every block on **Base mainnet** (chainId 8453) for EIP-1967 `Upgraded(address)` events — Base Sepolia (84532) is supported as the dev / demo environment. When one fires, the pipeline runs:
 
 1. **Detect** — [`upgradeWatcher`](src/watchers/upgradeWatcher.ts) reads the new implementation from the event and the old implementation from the EIP-1967 storage slot at `block - 1`.
 2. **Verify** — [`sourcify`](src/sourcify/index.ts) checks Sourcify (with retries), and if unverified, runs a bytecode similarity search to flag possible clones of known contracts.
 3. **Diff** — storage layouts ([`diffStorage`](src/sourcify/diffStorage.ts)) and ABIs ([`diffFunctions`](src/sourcify/diffFunctions.ts)) are compared. Moved/removed slots and added/removed/modified functions become risk flags. Sensitive names (`upgradeTo`, `withdraw`, `selfdestruct`, …) bump severity.
 4. **Score** — combines storage and function risk into `LOW | MEDIUM | HIGH | CRITICAL`. Partial Sourcify matches bump severity by one.
 5. **Analyse** — [`agent/analyser`](src/agent/analyser.ts) sends the diff bundle (plus NatSpec when available) to OpenAI `gpt-4o` and returns a structured `{summary, explanation, recommendation, confidence}` JSON.
-6. **Publish** — the alert is logged, appended to [`data/alerts.json`](data/), and uploaded to Swarm via [`@ethersphere/bee-js`](src/swarm/index.ts) through the `bzz.limo` gateway (no postage stamp required). Both the alert and the full block payload are added to a single Mantaray manifest under `alerts/<id>` and `blocks/<n>` paths; the manifest's signed feed (topic `vigil-manifest`) is the canonical subscriber endpoint and persists across restarts when `SWARM_PRIVATE_KEY` is pinned. After each alert, the agent also writes four reputation text records (`vigil.last-severity`, `vigil.last-upgrade-at`, `vigil.last-tx`, `vigil.upgrade-count`) back to the matching `*.vigil.eth` subname on Sepolia — turning ENS into a live, on-chain reputation log other agents can read.
+6. **Publish** — the alert is logged, appended to [`data/alerts.json`](data/) (per-chain, so Base mainnet alerts and Base Sepolia alerts route to separate stores), and uploaded to Swarm via [`@ethersphere/bee-js`](src/swarm/index.ts) through the `bzz.limo` gateway (no postage stamp required). The `{alert, block}` envelope is added to a single Mantaray manifest under `blocks/<n>`; the manifest's signed feed (topic `vigil-manifest`) is the canonical subscriber endpoint and persists across restarts when `SWARM_PRIVATE_KEY` is pinned. After each alert, the agent also writes four reputation text records (`vigil.last-severity`, `vigil.last-upgrade-at`, `vigil.last-tx`, `vigil.upgrade-count`) back to the matching `*.vigil.eth` subname on Sepolia — turning ENS into a live, on-chain reputation log other agents can read.
 
 The frontend pulls alerts from (in order) the configured Swarm feed URL, local `data/alerts.json` for Base mainnet, `data/alerts-base-sepolia.json` (or an inline TS seed) for Base Sepolia, falling back to mock data when nothing is available. A chain selector switches the view between Base and Base Sepolia, and any alert can be opened in a per-alert AI chat grounded in that alert's JSON. The dashboard's header card resolves `agent.vigil.eth` live from Sepolia ENS (description, capabilities, severity floor, `vigil.feed` URL); each alert card embeds a reputation panel resolved from the matching target subname (`*.vigil.eth`).
 
@@ -28,7 +28,7 @@ src/                         backend agent (TypeScript, Node.js, ESM)
 ├── sourcify/                verification, storage/ABI diffs, similarity
 ├── alerts/                  Alert type + severity + console rendering
 ├── delivery/                logAlert + atomic JSON store (data/alerts.json)
-├── swarm/                   bee-js Mantaray manifest publisher (alerts/<id> + blocks/<n>)
+├── swarm/                   bee-js Mantaray manifest publisher (blocks/<n>)
 └── ens/                     Ethereum Sepolia ENS reader + reputation writer
                              for vigil.eth and its subnames
 
@@ -197,7 +197,7 @@ Reputation lookup is symmetric — `npm run ens:resolve demo.vigil.eth` returns 
 | ENSIP-19 reverse on Base Sepolia | Base Sepolia · [`0xe5f947d7…dc9093`](https://sepolia.basescan.org/tx/0xe5f947d7a25c28a856492faaa8b53eb8dc14e155c2d10cbf1a0c105602dc9093), block 41284414 | Demo proxy → primary name `demo.vigil.eth`. `setNameForOwnableWithSignature` on L2ReverseRegistrar `0x00000BeEF055f7934784D6d81b6BC86665630dbA`; proxy is `OwnableUpgradeable` so deployer wallet's ERC-191 signature authorizes — no contract change needed. |
 | Smoke-test reputation write | Sepolia · 4 setText txs | First populated `demo.vigil.eth` reputation: `vigil.last-severity=CRITICAL`, `vigil.upgrade-count=1`. |
 | Run #2 demo upgrade (live e2e replay) | Base Sepolia · [`0x7ee96f68…7b2f7ead`](https://sepolia.basescan.org/tx/0x7ee96f68d31d3b2c6082d67026327b0d669ce8bcbfdf4fcac1eb348a7b2f7ead), block 41287554 | Agent watching Base Sepolia detected `Upgraded(address)`, ran the full pipeline, emitted CRITICAL alert tagged `demo.vigil.eth`, wrote reputation back (count `1→2`). |
-| Run #2 latest replayable upgrade | Base Sepolia · [`0x311a9136…8e7865b26`](https://sepolia.basescan.org/tx/0x311a9136821a2ed09cc2262da5cbb9623be0795a0e3d29f7dfadfdd8e7865b26), block 41288318, impl [`0xAb180BDA…AA553b`](https://sepolia.basescan.org/address/0xAb180BDA73bAd047e7a3bb7cfCBC11d2BcAA553b#code) | Bumping `VIGIL_DEMO_BUILD` in `DemoTokenV2.sol` lets `npm run upgrade` deploy a fresh impl → new `Upgraded(address)` event the agent picks up, **without** changing the proxy address. Same proxy, replayable demo. |
+| Run #2 latest replayable upgrade | Base Sepolia · [`0x20fbbcf4…6071881`](https://sepolia.basescan.org/tx/0x20fbbcf49dd996f273b1b974ae6fcbe20210a5bf58ad3ce0cb333bb0b6071881), block 41290914, impl [`0x6608a5C1…7cB035`](https://sepolia.basescan.org/address/0x6608a5C1e009fbF0C54aeC491b370Dbe4a7cB035#code) | Bumping `VIGIL_DEMO_BUILD` in `DemoTokenV2.sol` lets `npm run upgrade` (or `npm run demo-cycle`) deploy a fresh impl → new `Upgraded(address)` event the agent picks up, **without** changing the proxy address. Same proxy, replayable demo. Seven prior upgrades archived in [`previousUpgrades`](demo-target/deployments/base-sepolia.json). |
 
 Verify on the ENS app: <https://app.ens.domains/agent.vigil.eth?network=sepolia>
 
@@ -362,7 +362,7 @@ What works today:
 - Storage-layout and ABI diffing with severity scoring + sensitive-name flagging + partial-match bump
 - OpenAI `gpt-4o` analyser producing structured risk JSON
 - Atomic JSON stores per chain ([`data/alerts.json`](data/), `data/alerts-base-sepolia.json`) with deduplication by `txHash` and `chainId` tagging
-- Single Mantaray manifest on Swarm holding `alerts/<id>` + `blocks/<n>` paths, persisted across restarts via a signed feed (topic `vigil-manifest`, `NULL_STAMP`, `bzz.limo` gateway, no postage batch needed)
+- Single Mantaray manifest on Swarm holding `blocks/<n>` paths, persisted across restarts via a signed feed (topic `vigil-manifest`, `NULL_STAMP`, `bzz.limo` gateway, no postage batch needed)
 - Next.js dashboard with alert list, 24h upgrades chart, severity stats, copy-to-clipboard, per-alert AI chat, **Base/Base-Sepolia chain selector**, and Swarm-feed-URL alert source (cream/navy theme; logo at [`frontend/public/vigil-logo.png`](frontend/public/vigil-logo.png))
 - **Revoke-on-upgrade banner** with dual signing: routes through a connected injected wallet via wagmi when one is present, or falls back to a viem `walletClient` signing with the embedded testnet `NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY` for hands-off demo runs
 - **Optional Connect wallet button** (wagmi `injected()` connector) — the dashboard accepts an external wallet for the revoke flow and shows the demo wallet pill until one is connected

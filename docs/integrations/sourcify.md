@@ -27,7 +27,7 @@ These artifacts are diffed structurally to produce a severity score and a set of
 │   ┌──────────────────────────────────────────────────┐           │
 │   │  src/sourcify/index.ts                           │           │
 │   │                                                  │  HTTPS    │
-│   │  isVerifiedWithRetry(newImpl, 3, 30s) ───────────┼──────┐    │
+│   │  isVerifiedWithRetry(newImpl, 2, 15s) ───────────┼──────┐    │
 │   │                                                  │      │    │
 │   │  if !verified:                                   │      │    │
 │   │    findSimilarContracts(newImpl) ────────────────┼──────┤    │
@@ -81,7 +81,7 @@ The full v2 response schema is captured in the `SourcifyV2Response` interface in
 
 Sourcify can lag verification by several seconds after a contract is deployed. The agent applies a retry-then-fallback policy:
 
-1. `isVerifiedWithRetry(address, chainId, 3, 30_000)` — three attempts, 30 seconds apart.
+1. `isVerifiedWithRetry(address, chainId, 2, 15_000)` — initial check plus two retries 15 seconds apart (~30s ceiling). Demo-tuned: a longer ceiling makes the booth pacing dead-air-y. The default in [`src/sourcify/index.ts`](../../src/sourcify/index.ts) is `(3, 60_000)`; the pipeline overrides it at [`src/agent/index.ts`](../../src/agent/index.ts).
 2. On persistent failure, `findSimilarContracts(address, chainId, provider)` runs against `/v2/verify/similarity`. A score of ≥ 0.9 indicates a structural clone of a known contract; the alert is raised with that context.
 3. If similarity also returns nothing, an alert is emitted with `severity: CRITICAL` and the message "unverified implementation, no known relatives".
 
