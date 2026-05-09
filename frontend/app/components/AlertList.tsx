@@ -212,7 +212,11 @@ function AlertCard({
 
           {reputation && <EnsReputationPanel reputation={reputation} />}
 
-          <RevokeBanner proxyAddress={alert.proxyAddress} alertChainId={alert.chainId} />
+          <RevokeBanner
+            proxyAddress={alert.proxyAddress}
+            alertChainId={alert.chainId}
+            ensProxyOverride={reputation?.baseSepoliaAddress ?? null}
+          />
 
           {fullPipeline?.functionRiskFlags && fullPipeline.functionRiskFlags.length > 0 && (
             <div className="mt-3 space-y-1">
@@ -466,14 +470,20 @@ function EnsReputationPanel({ reputation }: { reputation: TargetReputation }) {
   const ensAppUrl = `${ENS_CONFIG.appUrlBase}/${reputation.name}?network=sepolia`;
 
   return (
-    <details className="brand-border-soft mt-3 rounded-md border bg-white/60 px-3 py-2 text-xs">
-      <summary className="flex cursor-pointer flex-wrap items-center gap-2 transition-colors hover:text-brand">
-        <span className="text-brand-soft uppercase tracking-wider text-[10px]">
-          ENS reputation
+    <details
+      open
+      className="mt-3 rounded-md border-l-2 border-l-[var(--brand-navy)] bg-white/70 px-3 py-2 text-xs shadow-sm"
+    >
+      <summary className="flex cursor-pointer flex-wrap items-center gap-2 transition-colors hover:text-brand list-none">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--severity-low)] pulse-glow" />
+          <span className="text-brand-soft uppercase tracking-wider text-[10px]">
+            ENS reputation
+          </span>
         </span>
-        <span className="font-mono text-brand">{reputation.name}</span>
+        <span className="font-mono font-semibold text-brand">{reputation.name}</span>
         {reputation.upgradeCount > 0 && (
-          <span className="brand-border-soft rounded border bg-white/70 px-1.5 py-0.5 text-[10px] font-mono text-brand">
+          <span className="brand-border-soft rounded border bg-white px-1.5 py-0.5 text-[10px] font-mono text-brand">
             {reputation.upgradeCount} upgrade{reputation.upgradeCount === 1 ? "" : "s"} tracked
           </span>
         )}
@@ -518,7 +528,7 @@ function EnsReputationPanel({ reputation }: { reputation: TargetReputation }) {
       </div>
 
       <div className="mt-2 flex items-center gap-2 text-[10px] text-brand-soft">
-        <span>resolved live from Sepolia ENS</span>
+        <span>resolved live from Sepolia ENS · written back by the agent after each alert</span>
         <span>·</span>
         <a
           href={ensAppUrl}
