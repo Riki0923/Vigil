@@ -284,6 +284,21 @@ The marquee demo: a wallet with an active approval on the demo proxy gets a one-
 
 Implementation in [`RevokeBanner`](frontend/app/components/RevokeBanner.tsx) (UI + orchestration), [`approvals`](frontend/lib/approvals.ts) (allowance hook), and [`wallet`](frontend/lib/wallet.ts) (wagmi config + per-chain demo proxy resolution). Plan: [`docs/plans/2026-05-09-revoke-on-upgrade-mvp.md`](docs/plans/2026-05-09-revoke-on-upgrade-mvp.md).
 
+### Re-arming between pitches
+
+Once V1 is deployed and you've run a pitch through to **Revoke approval** (allowance is now 0), use `npm run demo-cycle` from [`demo-target/`](demo-target/) to reset for the next pitch in one shot:
+
+```bash
+cd demo-target
+npm run demo-cycle
+```
+
+This bumps the `VIGIL_DEMO_BUILD` constant in `DemoTokenV2.sol` (so the new impl bytecode is unique → fresh `Upgraded` event), deploys a fresh V2 impl, calls `upgradeToAndCall` on the existing proxy, verifies on Sourcify, and re-approves `DEMO_WALLET → DEMO_SPENDER` for `MaxUint256`. End-to-end ≈ 30 s, ≈ 0.0005 ETH on Base Sepolia. Same proxy address across pitches, so ENS records and frontend env vars don't need re-pointing.
+
+Inside Claude Code, the [`demo-cycle` skill](.claude/skills/demo-cycle/SKILL.md) wraps the same script and additionally polls `data/alerts-base-sepolia.json` to confirm the watcher saw the new alert. Trigger it with phrases like "demo cycle", "arm the demo", or "prep the pitch". Spec + plan: [`docs/superpowers/specs/2026-05-09-demo-cycle-design.md`](docs/superpowers/specs/2026-05-09-demo-cycle-design.md), [`docs/superpowers/plans/2026-05-09-demo-cycle.md`](docs/superpowers/plans/2026-05-09-demo-cycle.md).
+
+After running, open the UI on Base Sepolia with **no wallet connected** and the red "Your wallet is exposed" banner reappears on the new alert card.
+
 ## Environment variables
 
 Three separate `.env` files — one per sub-project.
