@@ -15,7 +15,7 @@ import { diffABIs, assessFunctionRisk, type ABIItem } from "../sourcify/diffFunc
 import { createAlert, AlertSeverity } from "../alerts/index.js";
 import { emitAlert } from "../delivery/emit.js";
 import { analyseUpgrade } from "./analyser.js";
-import { initSwarm, publishAlert, publishBlock } from "../swarm/index.js";
+import { initSwarm, publishData } from "../swarm/index.js";
 
 dotenv.config();
 
@@ -190,11 +190,9 @@ export async function processUpgrade(
     analysis,
   });
 
-  const [alertHash] = await Promise.all([
-    publishAlert(alert),
-    publishBlock(block, block.number),
-  ]);
-  if (alertHash) alert.swarmHash = alertHash;
+
+    await publishData(alert,block);
+
 
   await emitAlert(alert, block.number);
 }

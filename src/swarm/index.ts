@@ -1,26 +1,25 @@
 import { Bee, Topic, PrivateKey, NULL_STAMP, MantarayNode } from "@ethersphere/bee-js";
 import { randomBytes } from "crypto";
+import * as fs from "fs";
 
 const BZZ_LIMO = "https://bzz.limo";
 const MANIFEST_TOPIC_NAME = "vigil-manifest";
+const STATE_FILE = ".swarm-manifest";
 
 let bee: Bee;
 let privateKey: PrivateKey;
 let manifestTopic: Topic;
-let ownerAddress: string;
 
-let currentManifest: MantarayNode | null = null;
+let node: MantarayNode;
 let manifestReference: string | null = null;
 
 export async function initSwarm(): Promise<void> {
   bee = new Bee(BZZ_LIMO);
 
   const rawKey = process.env.SWARM_PRIVATE_KEY;
-  let keyWasProvided = false;
 
   if (rawKey) {
     privateKey = new PrivateKey(Buffer.from(rawKey.replace(/^0x/, ""), "hex"));
-    keyWasProvided = true;
     console.log(`[Swarm] Loaded private key from SWARM_PRIVATE_KEY`);
   } else {
     const generated = randomBytes(32);
@@ -31,104 +30,53 @@ export async function initSwarm(): Promise<void> {
   }
 
   manifestTopic = Topic.fromString(MANIFEST_TOPIC_NAME);
-  ownerAddress = privateKey.publicKey().address().toChecksum();
-
-  if (keyWasProvided) {
-    try {
-      const reader = bee.makeFeedReader(manifestTopic, ownerAddress);
-      const { reference } = await reader.downloadReference();
-      const node = await MantarayNode.unmarshal(bee, reference);
-      await node.loadRecursively(bee);
-      currentManifest = node;
-      manifestReference = reference.toHex();
-      console.log(`[Swarm] Resumed existing manifest: ${BZZ_LIMO}/bzz/${manifestReference}/`);
-    } catch {
-      console.log(`[Swarm] No existing manifest found — starting fresh`);
-      currentManifest = new MantarayNode();
-    }
+  if (fs.existsSync(STATE_FILE)) {
+    const state = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
+    console.log(`[Swarm] Loading existing manifest: ${state.reference}`);
+    node = await MantarayNode.unmarshal(bee, state.reference);
+    await node.loadRecursively(bee);
+    manifestReference = state.reference;
+    console.log(`[Swarm] Loaded manifest with ${node.collect().length} entries`);
   } else {
-    currentManifest = new MantarayNode();
+    console.log(`[Swarm] No state file found — starting fresh`);
+    node = new MantarayNode();
   }
 
   console.log(`[Swarm] Manifest feed topic: ${MANIFEST_TOPIC_NAME} (${manifestTopic.toHex()})`);
   console.log(`[Swarm] Gateway: ${BZZ_LIMO}`);
 }
 
-async function saveManifest(): Promise<void> {
-  if (!currentManifest) return;
-
-  const result = await currentManifest.saveRecursively(bee, NULL_STAMP);
-  const reference = result.reference;
-
-  const writer = bee.makeFeedWriter(manifestTopic, privateKey);
-  await writer.uploadReference(NULL_STAMP, reference);
-
-  manifestReference = reference.toHex();
-  console.log(`[Swarm] Manifest updated: ${BZZ_LIMO}/bzz/${manifestReference}/`);
-}
-
-export async function publishAlert(alert: any): Promise<string | null> {
-  if (!bee || !privateKey || !currentManifest) {
+export async function publishData(alert: any, block: any): Promise<string | null> {
+  if (!bee || !privateKey || !node) {
     console.warn(`[Swarm] Not initialised — call initSwarm() first`);
     return null;
   }
 
   try {
-    const json = JSON.stringify(alert);
-    const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
-    const reference = uploadResult.reference;
+    const combined = { alert, block };
+    const result = await bee.uploadData(NULL_STAMP, JSON.stringify(combined));
 
-    currentManifest.addFork(
-      `alerts/${alert.id}`,
-      reference.toUint8Array(),
-      { "Content-Type": "application/json", Filename: alert.id },
+    node.addFork(
+      "blocks/" + block.number,
+      result.reference,
+      { "Content-Type": "application/json", Filename: String(block.number) },
     );
-    await saveManifest(); // Ennek mi a címe, ez lesz a manifest, sima hash 
 
-    const url = `${BZZ_LIMO}/bytes/${reference.toHex()}`;
-    console.log(`[Swarm] Alert published: ${url}`);
+    const saveResult = await node.saveRecursively(bee, NULL_STAMP);
+    manifestReference = saveResult.reference.toHex();
+
+    fs.writeFileSync(STATE_FILE, JSON.stringify({ reference: manifestReference }, null, 2));
+
+    const writer = bee.makeFeedWriter(manifestTopic, privateKey);
+    await writer.uploadReference(NULL_STAMP, saveResult.reference);
+
+    const url = `${BZZ_LIMO}/bzz/${manifestReference}/blocks/${block.number}`;
+    console.log(`[Swarm] Published: ${url}`);
     return url;
   } catch (err) {
-    console.error(`[Swarm] Failed to publish alert:`, err);
+    console.error(`[Swarm] Failed to publish data:`, err);
     return null;
   }
-}
-
-export async function publishBlock(blockData: any, blockNumber: number): Promise<string | null> {
-  if (!bee || !privateKey || !currentManifest) {
-    console.warn(`[Swarm] Not initialised — call initSwarm() first`);
-    return null;
-  }
-
-  try {
-    const json = JSON.stringify(blockData);
-    const uploadResult = await bee.uploadData(NULL_STAMP, Buffer.from(json));
-    const reference = uploadResult.reference;
-
-    currentManifest.addFork(
-      `blocks/${blockNumber}`,
-      reference.toUint8Array(),
-      { "Content-Type": "application/json", Filename: String(blockNumber) },
-    );
-    await saveManifest(); // űj 
-
-    const url = `${BZZ_LIMO}/bytes/${reference.toHex()}`;
-    console.log(`[Swarm] Block ${blockNumber} archived: ${url}`);
-    return url;
-  } catch (err) {
-    console.error(`[Swarm] Failed to publish block ${blockNumber}:`, err);
-    return null;
-  }
-}
-
-export function getBlockUrl(blockNumber: number): string | null {
-  if (!manifestReference) return null;
-  return `${BZZ_LIMO}/bzz/${manifestReference}/blocks/${blockNumber}`;
-}
-
-export function getAlertUrl(alertId: string): string | null {
-  if (!manifestReference) return null;
-  return `${BZZ_LIMO}/bzz/${manifestReference}/alerts/${alertId}`;
 }
 
 export function getManifestUrl(): string | null {
