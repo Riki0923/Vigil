@@ -3,5 +3,7 @@ node_modules
 .swarm-manifest
 docs/*
 !docs/ens-overview.md
+!docs/integrations/
+!docs/integrations/**
 data/
 demo-target/deployments/
