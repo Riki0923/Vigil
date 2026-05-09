@@ -28,7 +28,22 @@ import {
 dotenv.config();
 
 const RPC_URL = process.env.RPC_URL!;
-const VIGIL_AGENT_ENS_NAME = process.env.VIGIL_AGENT_ENS_NAME ?? "agent.vigil.eth";
+
+// Picks the agent ENS name matching the active VIGIL_ENS_NETWORK so the boot
+// reads from agent.vigilbot.eth on mainnet and agent.vigil.eth on sepolia
+// without operators having to keep two env vars in sync manually.
+function getAgentEnsName(): string {
+  const network = process.env.VIGIL_ENS_NETWORK?.toLowerCase();
+  if (network === "mainnet") {
+    return (
+      process.env.VIGIL_AGENT_ENS_NAME_MAINNET ??
+      `agent.${process.env.VIGIL_PARENT_ENS_NAME_MAINNET ?? "vigilbot.eth"}`
+    );
+  }
+  return process.env.VIGIL_AGENT_ENS_NAME ?? "agent.vigil.eth";
+}
+
+const VIGIL_AGENT_ENS_NAME = getAgentEnsName();
 
 const SEVERITY_ORDER: AlertSeverity[] = [
   AlertSeverity.LOW,
