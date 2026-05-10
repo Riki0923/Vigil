@@ -8,7 +8,7 @@ import type { Alert } from "@/lib/types";
 import { severityClasses, truncateAddress } from "@/lib/format";
 
 const SUGGESTED_PROMPTS = [
-  "Explain this upgrade in plain English.",
+  "Explain this upgrade's potential security issues.",
   "What is the worst case if this is exploited?",
   "Which storage slots collide and why does it matter?",
   "Compare this pattern to known historical exploits.",
