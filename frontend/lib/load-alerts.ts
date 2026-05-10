@@ -70,6 +70,12 @@ function extractOwnerFromFeedUrl(url: string): string | null {
 // to whatever else is available (cache, file, mock) instead of hanging.
 const SWARM_FETCH_TIMEOUT_MS = 8_000;
 
+// On timeout, store an empty result with a short effective TTL so the next
+// requests within the window respond instantly instead of waiting another
+// 8s. The background doFetchAlertsFromSwarm keeps running and will overwrite
+// the cache with real data if it eventually succeeds.
+const SWARM_FAILED_FETCH_TTL_MS = 60_000;
+
 async function fetchAlertsFromSwarm(feedUrl: string): Promise<Alert[]> {
   if (swarmCache && Date.now() - swarmCache.cachedAt < SWARM_CACHE_TTL_MS) {
     log.info(`Swarm cache hit, ${swarmCache.alerts.length} alert(s)`);
@@ -81,7 +87,13 @@ async function fetchAlertsFromSwarm(feedUrl: string): Promise<Alert[]> {
   }
   const timeoutPromise = new Promise<Alert[]>((resolve) =>
     setTimeout(() => {
-      log.warn(`Swarm fetch timed out after ${SWARM_FETCH_TIMEOUT_MS}ms, returning []`);
+      log.warn(`Swarm fetch timed out after ${SWARM_FETCH_TIMEOUT_MS}ms, caching [] for ${SWARM_FAILED_FETCH_TTL_MS}ms`);
+      // Backdate cachedAt so SWARM_CACHE_TTL_MS effectively expires in
+      // SWARM_FAILED_FETCH_TTL_MS instead of the full TTL window.
+      swarmCache = {
+        alerts: [],
+        cachedAt: Date.now() - (SWARM_CACHE_TTL_MS - SWARM_FAILED_FETCH_TTL_MS),
+      };
       resolve([]);
     }, SWARM_FETCH_TIMEOUT_MS),
   );
