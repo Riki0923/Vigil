@@ -2,7 +2,7 @@
 // Each alert produced by the agent for a known target updates the subname's
 // records, turning ENS into a live, on-chain reputation log for monitored
 // protocols. Other agents can `resolve usdc.vigil.eth` and read whether Vigil
-// has flagged it recently — agent-to-agent discovery via ENS records.
+// has flagged it recently, agent-to-agent discovery via ENS records.
 
 import { ethers } from "ethers";
 import { ENS_RESOLVER_ABI, ENS_REGISTRY_ABI } from "./abi.js";
@@ -26,7 +26,7 @@ export type ReputationUpdate = {
   txHash: string;
 };
 
-// Mirrors getActiveNetwork() in reader.ts — kept inline to avoid circular
+// Mirrors getActiveNetwork() in reader.ts, kept inline to avoid circular
 // imports between reader and writer. Defaults to mainnet (production parent
 // vigilbot.eth); set VIGIL_ENS_NETWORK=sepolia to write to vigil.eth instead.
 function getActiveNetwork(): EnsNetwork {
@@ -74,7 +74,7 @@ export async function updateTargetReputation(
   const registry = new ethers.Contract(contracts.registry, ENS_REGISTRY_ABI, signer);
   const resolverAddr = (await registry.getFunction("resolver")(node)) as string;
   if (!resolverAddr || resolverAddr === ethers.ZeroAddress) {
-    throw new Error(`No resolver set for ${name} — cannot write reputation records`);
+    throw new Error(`No resolver set for ${name}, cannot write reputation records`);
   }
   const resolver = new ethers.Contract(resolverAddr, ENS_RESOLVER_ABI, signer);
 
@@ -86,7 +86,7 @@ export async function updateTargetReputation(
   );
 
   const setText = resolver.getFunction("setText");
-  // Sequential awaits — ethers handles nonce; parallel txs would race on nonce.
+  // Sequential awaits, ethers handles nonce; parallel txs would race on nonce.
   const tx1 = await setText(node, REPUTATION_KEYS.lastSeverity, update.severity);
   await tx1.wait();
   const tx2 = await setText(node, REPUTATION_KEYS.lastUpgradeAt, update.timestamp);

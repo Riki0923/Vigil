@@ -72,13 +72,13 @@ function logDiff(diff: DiffResult): void {
     diff.removedVariables.length === 0 &&
     diff.addedVariables.length === 0
   ) {
-    console.log(`[StorageDiff] No changes detected — layouts are identical`);
+    console.log(`[StorageDiff] No changes detected, layouts are identical`);
     console.log(`[StorageDiff] ${line}`);
     return;
   }
 
   if (diff.movedVariables.length > 0) {
-    console.log(`[StorageDiff] MOVED (${diff.movedVariables.length}) — storage collision risk:`);
+    console.log(`[StorageDiff] MOVED (${diff.movedVariables.length}), storage collision risk:`);
     for (const v of diff.movedVariables) {
       console.log(`  ${v.label}: slot ${v.oldSlot}+${v.oldOffset} → slot ${v.newSlot}+${v.newOffset}`);
     }

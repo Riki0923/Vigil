@@ -20,7 +20,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Vigil — Ethereum proxy upgrade watch",
+  title: "Vigil, Ethereum proxy upgrade watch",
   description:
     "Autonomous agent that watches Ethereum proxy upgrades in real time and flags risky changes within seconds.",
 };

@@ -63,7 +63,7 @@ async function main(): Promise<void> {
     log.tx(`mint tx: ${mintTx.hash}`);
   } else {
     log.info(
-      `demo wallet already holds ${ethers.formatEther(existingBalance)} DEMO — skipping mint`,
+      `demo wallet already holds ${ethers.formatEther(existingBalance)} DEMO, skipping mint`,
     );
   }
 

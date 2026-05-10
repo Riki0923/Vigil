@@ -102,7 +102,7 @@ export async function isVerified(
     const verified = result?.status === "perfect" || result?.status === "partial";
 
     console.log(
-      `[Sourcify] ${address} — ${verified ? "verified ✓" : "not verified ✗"} (status: ${result?.status ?? "unknown"})`
+      `[Sourcify] ${address}, ${verified ? "verified ✓" : "not verified ✗"} (status: ${result?.status ?? "unknown"})`
     );
 
     return verified;
@@ -235,7 +235,7 @@ export async function findSimilarContracts(
     const bytecode = await provider.getCode(address);
 
     if (!bytecode || bytecode === "0x") {
-      console.log(`[Sourcify] No bytecode found for ${address} — not a contract?`);
+      console.log(`[Sourcify] No bytecode found for ${address}, not a contract?`);
       return [];
     }
 

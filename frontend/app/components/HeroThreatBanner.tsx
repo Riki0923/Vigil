@@ -126,17 +126,24 @@ export function HeroThreatBanner({ alerts }: { alerts: Alert[] }) {
         </div>
         <div className="min-w-0 flex-1">
           <div
-            className="text-[10px] font-bold uppercase tracking-widest"
-            style={sevDimStyle}
-          >
-            your wallet is exposed
-          </div>
-          <div
-            className="mt-0.5 text-sm font-bold leading-snug sm:text-base"
+            className="text-base font-bold leading-tight sm:text-lg"
             style={sevTextStyle}
           >
-            Active approval on {contractName} — the new implementation can move
-            your tokens.
+            Your wallet is exposed to a vulnerability
+          </div>
+          <div
+            className="mt-1.5 text-xs leading-snug sm:text-[13px]"
+            style={sevDimStyle}
+          >
+            <span className="font-semibold" style={sevTextStyle}>
+              {contractName}
+            </span>{" "}
+            contract has exposed a vulnerability and your wallet might be
+            compromised. Consider revoking your{" "}
+            <span className="font-semibold" style={sevTextStyle}>
+              {allowanceFmt?.label ?? "active"}
+            </span>{" "}
+            approval.
           </div>
         </div>
         <button
@@ -223,7 +230,7 @@ export function HeroThreatBanner({ alerts }: { alerts: Alert[] }) {
               style={{ color: "var(--sev-critical-text)", opacity: 0.8 }}
               title={error}
             >
-              failed — see console
+              failed. See console.
             </span>
           )}
         </div>

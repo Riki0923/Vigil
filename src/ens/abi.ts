@@ -15,21 +15,21 @@ export const ENS_RESOLVER_ABI = [
   "function setText(bytes32 node, string key, string value)",
 ] as const;
 
-// NameWrapper — used to create/manage subnames programmatically once vigil.eth is wrapped.
+// NameWrapper, used to create/manage subnames programmatically once vigil.eth is wrapped.
 // `setSubnodeRecord` creates a subname (or updates one), assigning owner + resolver + ttl.
 export const NAME_WRAPPER_ABI = [
   "function setSubnodeRecord(bytes32 parentNode, string label, address owner, address resolver, uint64 ttl, uint32 fuses, uint64 expiry) returns (bytes32)",
   "function ownerOf(uint256 id) view returns (address)",
 ] as const;
 
-// L2 Reverse Registrar (ENSIP-19) — sets the primary name for an address on L2.
+// L2 Reverse Registrar (ENSIP-19), sets the primary name for an address on L2.
 // Verified against ensdomains/ens-contracts deployments/baseSepolia/L2ReverseRegistrar.json
 // (Base Sepolia: 0x00000BeEF055f7934784D6d81b6BC86665630dbA, Base mainnet: 0x0000000000D8e504002cC26E3Ec46D81971C1664).
 //
 // Three usage patterns:
-//   - setName(name) — caller sets their own reverse name (msg.sender)
-//   - setNameForAddrWithSignature — set reverse for an EOA via off-chain signature from that EOA
-//   - setNameForOwnableWithSignature — set reverse for an Ownable contract (e.g. our UUPS proxy)
+//   - setName(name), caller sets their own reverse name (msg.sender)
+//   - setNameForAddrWithSignature, set reverse for an EOA via off-chain signature from that EOA
+//   - setNameForOwnableWithSignature, set reverse for an Ownable contract (e.g. our UUPS proxy)
 //     by submitting an off-chain signature from the contract's `owner()`
 export const L2_REVERSE_REGISTRAR_ABI = [
   "function setName(string name) returns (bytes32)",

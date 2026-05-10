@@ -207,8 +207,8 @@ tsx scripts/swarm/seed-feed.ts
 
 ## References
 
-- [Bee API](https://docs.ethswarm.org/api/) — gateway upload and download endpoints.
-- [bee-js SDK](https://github.com/ethersphere/bee-js) — TypeScript client used by the integration.
-- [Swarm Feeds](https://docs.ethswarm.org/docs/develop/access-the-swarm/feeds) — feed semantics and wire format.
-- [Mantaray manifest specification](https://docs.ethswarm.org/docs/concepts/manifest) — directory primitive.
-- [helia-verified-fetch](https://github.com/ipfs/helia-verified-fetch) — IPFS verified-fetch reference implementation.
+- [Bee API](https://docs.ethswarm.org/api/), gateway upload and download endpoints.
+- [bee-js SDK](https://github.com/ethersphere/bee-js), TypeScript client used by the integration.
+- [Swarm Feeds](https://docs.ethswarm.org/docs/develop/access-the-swarm/feeds), feed semantics and wire format.
+- [Mantaray manifest specification](https://docs.ethswarm.org/docs/concepts/manifest), directory primitive.
+- [helia-verified-fetch](https://github.com/ipfs/helia-verified-fetch), IPFS verified-fetch reference implementation.

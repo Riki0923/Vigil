@@ -1,7 +1,7 @@
 // Creates the agent + demo subnames under the parent ENS name and sets text/addr records.
 // Sepolia path: agent.vigil.eth + demo.vigil.eth (with addr[base-sepolia] from
 // demo-target/deployments/base-sepolia.json) and writes data/ens-targets.json.
-// Mainnet path: agent.vigilbot.eth only — demo subname is skipped until a Base
+// Mainnet path: agent.vigilbot.eth only, demo subname is skipped until a Base
 // mainnet demo proxy exists.
 //
 // Prerequisites:
@@ -45,7 +45,7 @@ function demoDeploymentPath(slug: "base-sepolia" | "base-mainnet"): string {
 
 const FUSES = 0;
 const TTL = 0n;
-const EXPIRY = (1n << 64n) - 1n; // max — inherits parent expiry semantics
+const EXPIRY = (1n << 64n) - 1n; // max, inherits parent expiry semantics
 
 function parseNetworkFlag(): EnsNetwork {
   const flag = process.argv.find((a) => a.startsWith("--network="));
@@ -97,7 +97,7 @@ async function ensureSubnameExists(
   const fullName = `${label}.${parentName}`;
   const exists = await isNameRegistered(fullName, network);
   if (exists) {
-    console.log(`[seed] ${fullName} already exists — skipping creation`);
+    console.log(`[seed] ${fullName} already exists, skipping creation`);
     return ethers.namehash(fullName);
   }
   console.log(`[seed] Creating ${fullName}...`);
@@ -178,7 +178,7 @@ async function main(): Promise<void> {
     network,
   );
   console.log(`[seed] Setting records on ${AGENT_LABEL}.${parentName}...`);
-  await setText(resolver, agentNode, RECORD_KEYS.description, "Vigil — autonomous proxy upgrade auditor");
+  await setText(resolver, agentNode, RECORD_KEYS.description, "Vigil, autonomous proxy upgrade auditor");
   await setText(resolver, agentNode, RECORD_KEYS.url, "https://github.com/Riki0923/Vigil");
   await setText(
     resolver,
@@ -198,7 +198,7 @@ async function main(): Promise<void> {
     "x402-planned:https://github.com/Riki0923/Vigil",
   );
 
-  // 2. demo subname + records — reads demo-target/deployments/<slug>.json.
+  // 2. demo subname + records, reads demo-target/deployments/<slug>.json.
   //    Skips with a friendly message if there is no deploy file for this network yet.
   const slug = network === "mainnet" ? "base-mainnet" : "base-sepolia";
   const deployPath = demoDeploymentPath(slug);
@@ -222,7 +222,7 @@ async function main(): Promise<void> {
       network,
     );
     console.log(`[seed] Setting records on ${DEMO_LABEL}.${parentName}...`);
-    await setText(resolver, demoNode, RECORD_KEYS.description, "Vigil demo proxy — live-upgraded during the pitch");
+    await setText(resolver, demoNode, RECORD_KEYS.description, "Vigil demo proxy, live-upgraded during the pitch");
     await setText(resolver, demoNode, RECORD_KEYS.kind, "demo-proxy");
     await setBaseAddr(resolver, demoNode, demoProxy, network);
 
@@ -234,7 +234,7 @@ async function main(): Promise<void> {
     console.log(`[seed] Wrote data/ens-targets.json with ${Object.keys(cache).length} entry`);
   } else {
     console.log(
-      `[seed] Skipping demo.${parentName} — ${deployPath} does not exist yet. Deploy first, then re-run.`,
+      `[seed] Skipping demo.${parentName}, ${deployPath} does not exist yet. Deploy first, then re-run.`,
     );
   }
 

@@ -25,7 +25,7 @@ type CycleResult = {
   upgradeTxHash: string;
   v2ImplAddress: string;
   proxyAddress: string;
-  allowance: "unlimited";
+  allowance: string;
   chainId: number;
 };
 
@@ -180,9 +180,9 @@ export function DemoControlsCard({ alerts }: { alerts: Alert[] }) {
               </div>
               <h3 className="mt-1 text-base font-bold text-brand">Re-arm the live attack scenario</h3>
               <p className="mt-1 text-xs text-brand-soft">
-                For demo purposes — clicking this triggers a fresh proxy upgrade on
-                Base mainnet and re-approves the demo spender so Vigil can detect it
-                in real time. Takes ~60–90s.
+                For demo purposes. Clicking this triggers a fresh proxy upgrade
+                on Base mainnet and re-approves the demo spender so Vigil can
+                detect it in real time. Takes ~60-90s.
               </p>
             </div>
 
@@ -308,7 +308,7 @@ function ResultModal({
             </a>
           </dd>
           <dt className="text-emerald-700/80">allowance</dt>
-          <dd className="text-emerald-900">Unlimited (MaxUint256)</dd>
+          <dd className="text-emerald-900">{result.allowance}</dd>
         </dl>
 
         <button

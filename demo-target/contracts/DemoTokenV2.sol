@@ -6,7 +6,7 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-// VULNERABLE — for Vigil testing only. Do not use in production.
+// VULNERABLE, for Vigil testing only. Do not use in production.
 //
 // Three deliberate sins relative to V1:
 //   1. emergencyAdmin inserted as the first state var → shifts paused/mintCap by one slot (storage collision).
@@ -18,7 +18,7 @@ contract DemoTokenV2 is
     OwnableUpgradeable,
     UUPSUpgradeable
 {
-    string public constant VIGIL_DEMO_BUILD = "2026-05-10T01:56:50.871Z";
+    string public constant VIGIL_DEMO_BUILD = "2026-05-10T07:19:21.778Z";
 
     address public emergencyAdmin;
     bool public paused;

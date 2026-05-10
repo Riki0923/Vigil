@@ -1,4 +1,4 @@
-// Chain archive on Swarm — block-indexed Mantaray manifest behind a signed feed.
+// Chain archive on Swarm, block-indexed Mantaray manifest behind a signed feed.
 //
 // Architecture:
 //   - One Mantaray manifest, owned by a keypair, served via a feed under `topic`.
@@ -77,7 +77,7 @@ export class ChainArchive {
       if (status === 404 || message.includes("404")) {
         this.node = new MantarayNode();
       } else {
-        // Unexpected failure — start fresh but propagate the warning to the
+        // Unexpected failure, start fresh but propagate the warning to the
         // caller so they can decide whether to log/retry.
         this.node = new MantarayNode();
         throw err;
@@ -95,7 +95,7 @@ export class ChainArchive {
     payload: BlockPayload,
   ): Promise<ArchiveResult> {
     if (!this.node) {
-      throw new Error("ChainArchive not initialised — call init() first");
+      throw new Error("ChainArchive not initialised, call init() first");
     }
     if (!Number.isInteger(blockNumber) || blockNumber < 0) {
       throw new Error(`Invalid block number: ${blockNumber}`);
@@ -129,7 +129,7 @@ export class ChainArchive {
    */
   async getBlock(blockNumber: number): Promise<BlockPayload | null> {
     if (!this.node) {
-      throw new Error("ChainArchive not initialised — call init() first");
+      throw new Error("ChainArchive not initialised, call init() first");
     }
 
     const ref = this.findFork(`blocks/${blockNumber}`);
@@ -141,7 +141,7 @@ export class ChainArchive {
 
   /**
    * Returns the deep-link URL for an archived block, or null if not archived.
-   * Does not fetch — purely a URL builder over the in-memory manifest state.
+   * Does not fetch, purely a URL builder over the in-memory manifest state.
    */
   getBlockUrl(blockNumber: number): string | null {
     if (!this.manifestReference || !this.node) return null;

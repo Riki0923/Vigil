@@ -11,7 +11,7 @@ export interface ApifyEnrichment {
 function getClient(): ApifyClient | null {
   const token = process.env.APIFY_API_KEY;
   if (!token) {
-    console.warn('[Apify] No API key set — skipping enrichment');
+    console.warn('[Apify] No API key set, skipping enrichment');
     return null;
   }
   return new ApifyClient({ token });
@@ -27,7 +27,7 @@ async function runActorX402(actorId: string, input: any): Promise<any[]> {
   const actorSlug = actorId.replace('/', '~');
   const url = `https://api.apify.com/v2/acts/${actorSlug}/run-sync-get-dataset-items`;
 
-  console.log('[Apify X402] Step 1 — sending initial request without payment...');
+  console.log('[Apify X402] Step 1, sending initial request without payment...');
   const firstResponse = await axios.post(
     url,
     input,
@@ -46,7 +46,7 @@ async function runActorX402(actorId: string, input: any): Promise<any[]> {
     return firstResponse.data ?? [];
   }
 
-  console.log('[Apify X402] Payment required — signing...');
+  console.log('[Apify X402] Payment required, signing...');
   const paymentRequired = firstResponse.headers['payment-required'] ?? firstResponse.headers['PAYMENT-REQUIRED'];
   console.log('[Apify X402] Payment required header value:', paymentRequired);
 

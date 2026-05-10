@@ -1,6 +1,6 @@
 # Sourcify Integration
 
-Vigil queries [Sourcify](https://sourcify.dev) — a public, decentralized service for verified Solidity source code — to obtain the structured artifacts (storage layout, ABI, NatSpec, match status) that drive its proxy-upgrade risk assessment. The integration is read-only, requires no API key, and falls back to bytecode similarity matching when an implementation has not yet been verified.
+Vigil queries [Sourcify](https://sourcify.dev), a public, decentralized service for verified Solidity source code, to obtain the structured artifacts (storage layout, ABI, NatSpec, match status) that drive its proxy-upgrade risk assessment. The integration is read-only, requires no API key, and falls back to bytecode similarity matching when an implementation has not yet been verified.
 
 ## Overview
 
@@ -81,7 +81,7 @@ The full v2 response schema is captured in the `SourcifyV2Response` interface in
 
 Sourcify can lag verification by several seconds after a contract is deployed. The agent applies a retry-then-fallback policy:
 
-1. `isVerifiedWithRetry(address, chainId, 2, 15_000)` — initial check plus two retries 15 seconds apart (~30s ceiling). Demo-tuned: a longer ceiling makes the booth pacing dead-air-y. The default in [`src/sourcify/index.ts`](../../src/sourcify/index.ts) is `(3, 60_000)`; the pipeline overrides it at [`src/agent/index.ts`](../../src/agent/index.ts).
+1. `isVerifiedWithRetry(address, chainId, 2, 15_000)`, initial check plus two retries 15 seconds apart (~30s ceiling). Demo-tuned: a longer ceiling makes the booth pacing dead-air-y. The default in [`src/sourcify/index.ts`](../../src/sourcify/index.ts) is `(3, 60_000)`; the pipeline overrides it at [`src/agent/index.ts`](../../src/agent/index.ts).
 2. On persistent failure, `findSimilarContracts(address, chainId, provider)` runs against `/v2/verify/similarity`. A score of ≥ 0.9 indicates a structural clone of a known contract; the alert is raised with that context.
 3. If similarity also returns nothing, an alert is emitted with `severity: CRITICAL` and the message "unverified implementation, no known relatives".
 
@@ -172,7 +172,7 @@ The runtime pipeline reads exclusively from Sourcify. Reasoning:
 2. **First-class storage layout.** Sourcify exposes the Solidity compiler's `storageLayout` JSON directly; Etherscan does not.
 3. **Bytecode similarity primitive.** Sourcify's `/v2/verify/similarity` has no equivalent on Etherscan and is essential to the unverified-contract fallback path.
 
-Etherscan is still used during demo deployment ([`demo-target/hardhat.config.ts`](../../demo-target/hardhat.config.ts) verifies V1/V2 implementations on both Sourcify and Etherscan), but only for block-explorer presentation — not for the runtime decision pipeline.
+Etherscan is still used during demo deployment ([`demo-target/hardhat.config.ts`](../../demo-target/hardhat.config.ts) verifies V1/V2 implementations on both Sourcify and Etherscan), but only for block-explorer presentation, not for the runtime decision pipeline.
 
 ## Verification
 

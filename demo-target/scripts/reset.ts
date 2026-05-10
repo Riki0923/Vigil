@@ -27,7 +27,7 @@ function main(): void {
       log.info(`not present: ${rel}`);
     }
   }
-  log.ok(`done — ${removed} file(s) removed`);
+  log.ok(`done, ${removed} file(s) removed`);
 }
 
 main();

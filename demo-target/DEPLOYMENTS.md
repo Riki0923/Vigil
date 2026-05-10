@@ -2,7 +2,7 @@
 
 Reference for end-to-end live deploys + upgrades on **Base mainnet** (chainId `8453`) and **Base Sepolia** (chainId `84532`). Use these addresses to replay-test Vigil's watcher without burning gas on a fresh `npm run cycle:mainnet` / `npm run cycle`.
 
-## Base mainnet — 2026-05-09 (active production proxy)
+## Base mainnet, 2026-05-09 (active production proxy)
 
 This is the proxy currently named `demo.vigilbot.eth` via ENSIP-19 reverse on Base mainnet and pointed to by `demo.vigilbot.eth`'s ENSIP-11 `addr[base-mainnet]` record on Ethereum mainnet (`vigilbot.eth` parent registered the same day).
 
@@ -18,15 +18,15 @@ This is the proxy currently named `demo.vigilbot.eth` via ENSIP-19 reverse on Ba
 | Deployer | `0xf5B1d9144d9D005CD74cFC2d1A22cbAF4e8E8736` |
 | L2ReverseRegistrar | `0x0000000000D8e504002cC26E3Ec46D81971C1664` |
 
-Both impls verified on **Sourcify** and **Basescan**. To re-arm the demo, run `cd demo-target && npm run demo-cycle:mainnet` — bumps the build stamp, deploys a fresh V2 impl, fires `upgradeToAndCall`, mints DEMO + re-approves DEMO_SPENDER.
+Both impls verified on **Sourcify** and **Basescan**. To re-arm the demo, run `cd demo-target && npm run demo-cycle:mainnet`, bumps the build stamp, deploys a fresh V2 impl, fires `upgradeToAndCall`, mints DEMO + re-approves DEMO_SPENDER.
 
-## Base Sepolia — legacy / testing
+## Base Sepolia, legacy / testing
 
-### Run #2 — 2026-05-09 (Sepolia active proxy, ENS-named)
+### Run #2, 2026-05-09 (Sepolia active proxy, ENS-named)
 
 This is the proxy currently named `demo.vigil.eth` via ENSIP-19 reverse on Base Sepolia and pointed to by `demo.vigil.eth`'s ENSIP-11 `addr[base-sepolia]` record on Sepolia. Different proxy address than run #1 (a `npm run cycle` was run between them); ENS was seeded against this one.
 
-The latest on-chain `Upgraded(address)` event was forced by adding a `VIGIL_DEMO_BUILD` build-stamp constant to [`contracts/DemoTokenV2.sol`](contracts/DemoTokenV2.sol), which changes the impl bytecode without touching storage layout — so OZ's `prepareUpgrade` deploys a fresh impl each run and the agent sees `newImpl != oldImpl`. Bump that constant any time you need to force a fresh upgrade event without re-running `cycle` (which would change the proxy address and break ENS).
+The latest on-chain `Upgraded(address)` event was forced by adding a `VIGIL_DEMO_BUILD` build-stamp constant to [`contracts/DemoTokenV2.sol`](contracts/DemoTokenV2.sol), which changes the impl bytecode without touching storage layout, so OZ's `prepareUpgrade` deploys a fresh impl each run and the agent sees `newImpl != oldImpl`. Bump that constant any time you need to force a fresh upgrade event without re-running `cycle` (which would change the proxy address and break ENS).
 
 | | Value |
 |---|---|
@@ -38,14 +38,14 @@ The latest on-chain `Upgraded(address)` event was forced by adding a `VIGIL_DEMO
 
 Seven earlier upgrades on the same proxy are preserved as `previousUpgrades` in [`deployments/base-sepolia.json`](deployments/base-sepolia.json):
 
-* Block `41287554` — original V2 deploy on this proxy (impl `0x1Ade…c933B`).
-* Block `41288243` — idempotent re-upgrade pointing back at the same impl `0x1Ade…c933B`. The agent's `newImpl == oldImpl` guard correctly skips this one.
-* Block `41288318` — first build-stamp bump (impl `0xAb180BDA…AA553b`); agent was on Base mainnet at the time so didn't see it.
-* Blocks `41289176`, `41290689`, `41290714`, `41290887` — four `npm run demo-cycle` replays, each producing a fresh impl via the build-stamp bump.
+* Block `41287554`, original V2 deploy on this proxy (impl `0x1Ade…c933B`).
+* Block `41288243`, idempotent re-upgrade pointing back at the same impl `0x1Ade…c933B`. The agent's `newImpl == oldImpl` guard correctly skips this one.
+* Block `41288318`, first build-stamp bump (impl `0xAb180BDA…AA553b`); agent was on Base mainnet at the time so didn't see it.
+* Blocks `41289176`, `41290689`, `41290714`, `41290887`, four `npm run demo-cycle` replays, each producing a fresh impl via the build-stamp bump.
 
 Latest impl verified on **Sourcify** and **Basescan**.
 
-### Run #1 — 2026-05-09 (Sepolia, superseded — proxy from this run is no longer the active one)
+### Run #1, 2026-05-09 (Sepolia, superseded, proxy from this run is no longer the active one)
 
 | | Value |
 |---|---|
@@ -74,8 +74,8 @@ Revert the scan range and `BASE_MAINNET_RPC_URL` after the test.
 
 ### Adding more Sepolia runs
 
-Running `npm run cycle` from `demo-target/` produces a fresh proxy + V1 + V2 each time on Base Sepolia. After each cycle, append a new `### Run #N — YYYY-MM-DD` section under "Base Sepolia — legacy / testing" with the new addresses (read from `demo-target/deployments/base-sepolia.json`).
+Running `npm run cycle` from `demo-target/` produces a fresh proxy + V1 + V2 each time on Base Sepolia. After each cycle, append a new `### Run #N, YYYY-MM-DD` section under "Base Sepolia, legacy / testing" with the new addresses (read from `demo-target/deployments/base-sepolia.json`).
 
 ## Adding more mainnet runs
 
-For the live production proxy, prefer `npm run demo-cycle:mainnet` (re-uses the same proxy, swaps impl) so the ENS records and `demo.vigilbot.eth` reverse name remain stable. A full `npm run cycle:mainnet` will spin up a new proxy and break the existing ENS wiring — only do that if you intentionally want to re-seed.
+For the live production proxy, prefer `npm run demo-cycle:mainnet` (re-uses the same proxy, swaps impl) so the ENS records and `demo.vigilbot.eth` reverse name remain stable. A full `npm run cycle:mainnet` will spin up a new proxy and break the existing ENS wiring, only do that if you intentionally want to re-seed.

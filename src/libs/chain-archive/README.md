@@ -4,7 +4,7 @@ A TypeScript library that stores Ethereum chain data on Swarm and exposes a stab
 
 ## Background
 
-Ethereum's historical data is increasingly difficult to access. Archive nodes require terabytes of storage, and most applications fall back to centralized providers for old blocks, receipts, and state proofs. Swarm is content-addressed, signed-feed-backed storage — a natural fit for data that does not change once produced. This library implements a single-feed, single-manifest archive primitive: one keypair-owned manifest with `blocks/<n>` paths, content-addressed payloads, and signed updates.
+Ethereum's historical data is increasingly difficult to access. Archive nodes require terabytes of storage, and most applications fall back to centralized providers for old blocks, receipts, and state proofs. Swarm is content-addressed, signed-feed-backed storage, a natural fit for data that does not change once produced. This library implements a single-feed, single-manifest archive primitive: one keypair-owned manifest with `blocks/<n>` paths, content-addressed payloads, and signed updates.
 
 ## Installation
 

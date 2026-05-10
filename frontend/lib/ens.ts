@@ -57,7 +57,7 @@ const RECORD_KEYS = {
   upgradeCount: "vigil.upgrade-count",
 } as const;
 
-// ENSIP-11 multichain coin types — the demo proxy address record is keyed on
+// ENSIP-11 multichain coin types, the demo proxy address record is keyed on
 // whichever Base chain matches the active ENS network.
 const BASE_MAINNET_COIN_TYPE = BigInt(0x80000000) | BigInt(8453);
 const BASE_SEPOLIA_COIN_TYPE = BigInt(0x80000000) | BigInt(84532);
@@ -98,7 +98,7 @@ function getClient() {
   const rpc = getNetworkRpc(network);
   if (!rpc) {
     const envName = network === "mainnet" ? "ETH_MAINNET_RPC_URL" : "ETH_SEPOLIA_RPC_URL";
-    log.warn(`${envName} unset — ENS resolution disabled (network=${network})`);
+    log.warn(`${envName} unset, ENS resolution disabled (network=${network})`);
     return null;
   }
   return createPublicClient({
@@ -150,7 +150,7 @@ export async function fetchAgentIdentity(
     readText(client, name, RECORD_KEYS.severityMin),
   ]);
   if (description === null && url === null && capabilitiesRaw === null) {
-    log.warn(`${name} has no records — returning null`);
+    log.warn(`${name} has no records, returning null`);
     return null;
   }
   log.ok(`resolved ${name} (severity-min=${severityMin ?? "unset"})`);
@@ -213,7 +213,7 @@ export const ENS_CONFIG = {
   agentName: getDefaultAgentName(activeNetwork),
   chainId: activeNetwork === "mainnet" ? mainnet.id : sepolia.id,
   appUrlBase: "https://app.ens.domains",
-  // UI helpers — keep components free of network-flag conditionals.
+  // UI helpers, keep components free of network-flag conditionals.
   network: activeNetwork,
   networkParam: activeNetwork === "mainnet" ? "mainnet" : "sepolia",
   networkLabel: activeNetwork === "mainnet" ? "Ethereum Mainnet" : "Ethereum Sepolia",

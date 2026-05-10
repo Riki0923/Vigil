@@ -1,6 +1,6 @@
 // ENS provider and contract addresses for Ethereum Sepolia and Ethereum mainnet.
 // Sepolia hosts vigil.eth (testnet); mainnet hosts vigilbot.eth (production parent).
-// The agent watches Base separately — see src/agent/index.ts.
+// The agent watches Base separately, see src/agent/index.ts.
 
 import { ethers } from "ethers";
 
@@ -46,7 +46,7 @@ export function getSepoliaProvider(): ethers.JsonRpcProvider {
   const url = process.env.ETH_SEPOLIA_RPC_URL;
   if (!url) {
     throw new Error(
-      "ETH_SEPOLIA_RPC_URL is not set — required for ENS resolution on Ethereum Sepolia",
+      "ETH_SEPOLIA_RPC_URL is not set, required for ENS resolution on Ethereum Sepolia",
     );
   }
   cachedSepoliaProvider = new ethers.JsonRpcProvider(url, ENS_SEPOLIA.chainId);
@@ -61,7 +61,7 @@ export function getSepoliaSigner(): ethers.Wallet {
   const pk = process.env.ENS_REGISTRAR_PRIVATE_KEY;
   if (!pk) {
     throw new Error(
-      "ENS_REGISTRAR_PRIVATE_KEY is not set — required for ENS write operations (subname creation, record updates)",
+      "ENS_REGISTRAR_PRIVATE_KEY is not set, required for ENS write operations (subname creation, record updates)",
     );
   }
   return new ethers.Wallet(pk, getSepoliaProvider());
@@ -72,7 +72,7 @@ export function getMainnetProvider(): ethers.JsonRpcProvider {
   const url = process.env.ETH_MAINNET_RPC_URL;
   if (!url) {
     throw new Error(
-      "ETH_MAINNET_RPC_URL is not set — required for ENS resolution on Ethereum mainnet",
+      "ETH_MAINNET_RPC_URL is not set, required for ENS resolution on Ethereum mainnet",
     );
   }
   cachedMainnetProvider = new ethers.JsonRpcProvider(url, ENS_MAINNET.chainId);
@@ -87,7 +87,7 @@ export function getMainnetSigner(): ethers.Wallet {
   const pk = process.env.ENS_REGISTRAR_PRIVATE_KEY;
   if (!pk) {
     throw new Error(
-      "ENS_REGISTRAR_PRIVATE_KEY is not set — required for ENS write operations (subname creation, record updates)",
+      "ENS_REGISTRAR_PRIVATE_KEY is not set, required for ENS write operations (subname creation, record updates)",
     );
   }
   return new ethers.Wallet(pk, getMainnetProvider());

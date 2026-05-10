@@ -40,7 +40,7 @@ export interface ChainArchiveOptions {
 
 export interface ArchiveResult {
   blockNumber: number;
-  /** Swarm reference (32-byte hex) of the uploaded payload — content-addressed. */
+  /** Swarm reference (32-byte hex) of the uploaded payload, content-addressed. */
   reference: string;
   /** Deep-link URL fetchable from any Swarm gateway. */
   url: string;

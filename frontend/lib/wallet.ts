@@ -33,7 +33,7 @@ export const wagmiConfig = createConfig({
   ssr: true,
 });
 
-// Demo proxies per chain. Mainnet is intentionally unset — contracts are Sepolia-only.
+// Demo proxies per chain. Mainnet is intentionally unset, contracts are Sepolia-only.
 const DEMO_PROXY_BASE = process.env.NEXT_PUBLIC_DEMO_PROXY_BASE as Address | undefined;
 const DEMO_PROXY_BASE_SEPOLIA = process.env.NEXT_PUBLIC_DEMO_PROXY_BASE_SEPOLIA as
   | Address
@@ -72,22 +72,26 @@ export type FormattedAllowance = {
   detail: string;
 };
 
-export function formatAllowance(allowance: bigint, decimals = 18, symbol = "DEMO"): FormattedAllowance {
+export function formatAllowance(
+  allowance: bigint,
+  decimals = 18,
+  tokenName = "Vigil Tokens",
+): FormattedAllowance {
   if (allowance === MAX_UINT256) {
     return {
       isUnlimited: true,
-      label: "Unlimited",
-      detail: "MaxUint256 — the spender can drain your entire balance",
+      label: `Unlimited ${tokenName}`,
+      detail: "MaxUint256. The spender can drain your entire balance.",
     };
   }
   const whole = allowance / 10n ** BigInt(decimals);
   return {
     isUnlimited: false,
-    label: `${whole.toLocaleString()} ${symbol}`,
-    detail: allowance.toString(),
+    label: `${whole.toLocaleString()} ${tokenName}`,
+    detail: `${allowance.toString()} (raw). The spender can take up to this amount.`,
   };
 }
 
-// First-visit landing chain. Sepolia/testnet is hidden from the UI for now —
+// First-visit landing chain. Sepolia/testnet is hidden from the UI for now , 
 // only Base mainnet is selectable, so this is also the only valid view chain.
 export const DEFAULT_VIEW_CHAIN_ID: SupportedChainId = base.id;

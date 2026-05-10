@@ -27,7 +27,7 @@ export function ChatPanel({ alert, onClose }: Props) {
   // can't be read during render) AND constructs a fresh transport on every
   // render even though only the first survives. Lazy useState avoids both.
   // The parent renders <ChatPanel key={alert.id}/> so the panel remounts
-  // per alert — alert.id is stable for this instance's lifetime.
+  // per alert, alert.id is stable for this instance's lifetime.
   const [transport] = useState(
     () =>
       new DefaultChatTransport({

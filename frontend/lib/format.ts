@@ -28,7 +28,7 @@ export function truncateHash(hash: string): string {
 
 export function relativeTime(isoTimestamp: string): string {
   const t = Date.parse(isoTimestamp);
-  if (Number.isNaN(t)) return "—";
+  if (Number.isNaN(t)) return ", ";
   const diffMs = Date.now() - t;
   const sec = Math.floor(diffMs / 1000);
   if (sec < 60) return `${Math.max(sec, 0)}s ago`;

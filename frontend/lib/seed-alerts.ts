@@ -15,7 +15,7 @@ export const seedAlertsBaseSepolia: Alert[] = [
     chainId: 84532,
     isVerified: true,
     hasStorageLayout: true,
-    message: "DemoToken proxy upgraded — V1 active (demo seed alert)",
+    message: "DemoToken proxy upgraded, V1 active (demo seed alert)",
     rawData: {
       storageDiff: null,
       abiDiff: null,

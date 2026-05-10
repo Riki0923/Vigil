@@ -54,7 +54,7 @@ function getDefaultAgentName(network: EnsNetwork): string {
 function computeFeedUrl(): string {
   const raw = process.env.SWARM_PRIVATE_KEY;
   if (!raw) {
-    throw new Error("SWARM_PRIVATE_KEY is not set — pin it in .env first");
+    throw new Error("SWARM_PRIVATE_KEY is not set, pin it in .env first");
   }
   const pk = new PrivateKey(Buffer.from(raw.replace(/^0x/, ""), "hex"));
   const owner = pk.publicKey().address().toChecksum();
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
   const resolverAddr = (await registry.getFunction("resolver")(node)) as string;
   if (!resolverAddr || resolverAddr === ethers.ZeroAddress) {
     throw new Error(
-      `No resolver set for ${agentName} — run tsx scripts/ens/seed-subnames.ts --network=${network} first`,
+      `No resolver set for ${agentName}, run tsx scripts/ens/seed-subnames.ts --network=${network} first`,
     );
   }
   const resolver = new ethers.Contract(resolverAddr, ENS_RESOLVER_ABI, signer);

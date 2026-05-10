@@ -30,7 +30,7 @@ Stream the output to the operator. Capture the new upgrade tx hash by scanning t
 [demo-cycle] upgrade tx:      0x<64 hex chars>
 ```
 
-(Note: there are multiple spaces between `tx:` and the hash — the regex should be tolerant: `^\[demo-cycle\] upgrade tx:\s+(0x[a-fA-F0-9]{64})`.)
+(Note: there are multiple spaces between `tx:` and the hash, the regex should be tolerant: `^\[demo-cycle\] upgrade tx:\s+(0x[a-fA-F0-9]{64})`.)
 
 If the script exits non-zero: STOP, surface the error to the operator, and ask them to fix and re-run. Common failures:
 
@@ -50,7 +50,7 @@ The watcher writes alerts to `data/alerts-base-mainnet.json` (relative to repo r
 
 If the entry shows up: pass.
 
-If timeout: warn the operator that the watcher may not be running, but DO NOT FAIL — proceed to step 3. The on-chain state is what arms the banner; the alert file is a UI-side concern that catches up once the watcher is back.
+If timeout: warn the operator that the watcher may not be running, but DO NOT FAIL, proceed to step 3. The on-chain state is what arms the banner; the alert file is a UI-side concern that catches up once the watcher is back.
 
 ### 3. Print the go message
 
@@ -64,7 +64,7 @@ If step 1 passed and step 2 found the alert:
 If step 1 passed but step 2 timed out:
 
 ```
-⚠️ Alert not yet seen in data/alerts-base-mainnet.json after 60s — watcher may not be running.
+⚠️ Alert not yet seen in data/alerts-base-mainnet.json after 60s, watcher may not be running.
 ✅ Banner armed on-chain (script exit 0 + allowance: MaxUint256). Once the watcher catches up, the banner will appear in the UI.
    Open the UI on Base mainnet, disconnect any wallet, click Revoke.
 ```
@@ -75,8 +75,8 @@ If step 1 passed but step 2 timed out:
 - Drive the UI or open a browser.
 - Approve from any wallet other than `DEMO_WALLET` (the env-configured demo wallet, not the operator's connected wallet).
 - Reset the proxy contract or touch ENS records.
-- Skip step 1 to "save time" — even if the chain state already looks right, the operator wants a fresh alert per pitch.
+- Skip step 1 to "save time", even if the chain state already looks right, the operator wants a fresh alert per pitch.
 
 ## Sepolia variant (legacy/testing only)
 
-The Sepolia setup still works (`npm run demo-cycle` without `:mainnet`, alerts file `data/alerts-base-sepolia.json`, chainId 84532). Use only when the operator explicitly asks for Sepolia — production demos run on Base mainnet.
+The Sepolia setup still works (`npm run demo-cycle` without `:mainnet`, alerts file `data/alerts-base-sepolia.json`, chainId 84532). Use only when the operator explicitly asks for Sepolia, production demos run on Base mainnet.

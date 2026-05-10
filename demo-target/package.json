@@ -2,7 +2,7 @@
   "name": "vigil-demo-target",
   "version": "1.0.0",
   "private": true,
-  "description": "Upgradeable proxy demo target for Vigil — Base Sepolia + Base mainnet",
+  "description": "Upgradeable proxy demo target for Vigil, Base Sepolia + Base mainnet",
   "scripts": {
     "compile": "hardhat compile",
     "deploy": "hardhat run scripts/deploy-proxy.ts --network baseSepolia",

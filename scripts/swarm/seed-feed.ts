@@ -2,7 +2,7 @@
 // `vigil.feed` URL resolves immediately for subscribers / judges,
 // even before the agent has detected a real upgrade.
 //
-// Uses SWARM_PRIVATE_KEY from .env. Idempotent — running it again just
+// Uses SWARM_PRIVATE_KEY from .env. Idempotent, running it again just
 // adds another bootstrap alert under a fresh id.
 //
 // Usage: tsx scripts/swarm/seed-feed.ts
@@ -15,7 +15,7 @@ dotenv.config();
 
 async function main(): Promise<void> {
   if (!process.env.SWARM_PRIVATE_KEY) {
-    throw new Error("SWARM_PRIVATE_KEY is not set — pin it in .env first");
+    throw new Error("SWARM_PRIVATE_KEY is not set, pin it in .env first");
   }
 
   await initSwarm();
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
     txHash: "0x" + "0".repeat(64),
     isVerified: true,
     hasStorageLayout: false,
-    message: "Vigil online — feed bootstrap (no real upgrade yet, this is the discovery payload)",
+    message: "Vigil online, feed bootstrap (no real upgrade yet, this is the discovery payload)",
     rawData: {
       kind: "bootstrap",
       published_by: "scripts/swarm/seed-feed.ts",
@@ -38,14 +38,14 @@ async function main(): Promise<void> {
   };
 
   // publishData expects an alert + block pair. The bootstrap doesn't have a
-  // real block, so we stamp a synthetic one — block.number is what becomes
+  // real block, so we stamp a synthetic one, block.number is what becomes
   // the manifest path key, so a Date.now() id stays unique across re-runs.
   const block = { number: Date.now() };
 
   console.log(`[seed-feed] Publishing bootstrap alert id=${alert.id}...`);
   const url = await publishData(alert, block);
   if (!url) {
-    throw new Error("publishData returned null — check Swarm gateway / postage");
+    throw new Error("publishData returned null, check Swarm gateway / postage");
   }
   console.log(`[seed-feed] ✅ Feed populated. Subscribers can now resolve vigil.feed.`);
   console.log(`[seed-feed]    Alert URL: ${url}`);

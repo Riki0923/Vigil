@@ -142,7 +142,7 @@ export const mockAlerts: Alert[] = [
     isVerified: false,
     hasStorageLayout: false,
     message:
-      "HIGH SIMILARITY to known contract — possible clone (2 match(es) above 0.9 score)",
+      "HIGH SIMILARITY to known contract, possible clone (2 match(es) above 0.9 score)",
     rawData: {
       oldImplAddress: "0xaaaa1111bbbb2222cccc3333dddd4444eeee5555",
       similarContracts: [

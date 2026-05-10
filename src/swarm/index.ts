@@ -7,7 +7,7 @@ import { randomBytes } from "crypto";
 import { ChainArchive } from "../libs/chain-archive/index.js";
 
 const BZZ_LIMO = "https://bzz.limo";
-// Pinned topic — keeps Vigil's published feed URL stable across the
+// Pinned topic, keeps Vigil's published feed URL stable across the
 // chain-archive extraction. Subscribers find this URL via vigil.feed
 // on agent.vigil.eth; changing the string would break discovery.
 const VIGIL_MANIFEST_TOPIC = Topic.fromString("vigil-manifest");
@@ -24,7 +24,7 @@ export async function initSwarm(): Promise<void> {
   } else {
     const generated = randomBytes(32);
     privateKey = new PrivateKey(generated);
-    console.log(`[Swarm] No SWARM_PRIVATE_KEY found — generated new key:`);
+    console.log(`[Swarm] No SWARM_PRIVATE_KEY found, generated new key:`);
     console.log(`[Swarm] SWARM_PRIVATE_KEY=${generated.toString("hex")}`);
     console.log(`[Swarm] Save this in your .env to keep the same feed across restarts`);
   }
@@ -43,11 +43,11 @@ export async function initSwarm(): Promise<void> {
     if (archived.length > 0) {
       console.log(`[Swarm] Resumed existing manifest with ${archived.length} entries`);
     } else {
-      console.log(`[Swarm] No existing manifest — starting fresh`);
+      console.log(`[Swarm] No existing manifest, starting fresh`);
     }
   } catch (err) {
     console.warn(
-      `[Swarm] init failed — continuing with empty manifest:`,
+      `[Swarm] init failed, continuing with empty manifest:`,
       (err as Error)?.message ?? err,
     );
   }
@@ -55,7 +55,7 @@ export async function initSwarm(): Promise<void> {
 
 export async function publishData(alert: any, block: any): Promise<string | null> {
   if (!archive) {
-    console.warn(`[Swarm] Not initialised — call initSwarm() first`);
+    console.warn(`[Swarm] Not initialised, call initSwarm() first`);
     return null;
   }
 

@@ -19,7 +19,7 @@ export function AgentIdentityCard({ identity }: { identity: AgentIdentity | null
   if (!identity) {
     return (
       <div className="brand-border-soft mb-5 rounded-lg border bg-white/40 px-5 py-4 text-xs text-brand-soft">
-        <span className="font-mono">{ENS_CONFIG.rpcEnvName}</span> not configured —
+        <span className="font-mono">{ENS_CONFIG.rpcEnvName}</span> not configured , 
         agent identity not resolvable from ENS in this environment.
       </div>
     );

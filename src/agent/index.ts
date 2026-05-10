@@ -107,19 +107,19 @@ export async function processUpgrade(
   console.log(`  Chain:    ${chainId}`);
 
   if (newImplAddress.toLowerCase() === oldImplAddress.toLowerCase()) {
-    console.log(`[Pipeline] Skipping — same implementation address, checksum difference only`);
+    console.log(`[Pipeline] Skipping, same implementation address, checksum difference only`);
     return;
   }
 
-  // Step 1 — verification with retry
-  console.log(`\n[Pipeline] Step 1/4 — Checking Sourcify verification (up to 3 retries, 30s apart)...`);
+  // Step 1, verification with retry
+  console.log(`\n[Pipeline] Step 1/4, Checking Sourcify verification (up to 3 retries, 30s apart)...`);
   // 2 retries × 15s = 30s ceiling before falling through to the unverified
   // path. Tighter than the previous 3×30s = 90s because for a live booth
   // demo, 90s of "Sourcify retrying..." dead air kills the pacing.
   const verified = await isVerifiedWithRetry(newImplAddress, chainId, 2, 15_000);
 
   if (!verified) {
-    console.log(`[Pipeline] Not verified after retries — checking for similar contracts...`);
+    console.log(`[Pipeline] Not verified after retries, checking for similar contracts...`);
 
     const similarContracts = await findSimilarContracts(newImplAddress, chainId, provider);
 
@@ -129,20 +129,20 @@ export async function processUpgrade(
     let message = `Unverified implementation detected`;
 
     if (highSimilarity.length > 0) {
-      message = `HIGH SIMILARITY to known contract — possible clone (${highSimilarity.length} match(es) above 0.9 score)`;
+      message = `HIGH SIMILARITY to known contract, possible clone (${highSimilarity.length} match(es) above 0.9 score)`;
       console.log(`[Pipeline] High similarity matches found:`);
       for (const c of highSimilarity) {
         console.log(`  ${c.address} (chain ${c.chainId}, score ${c.similarity.toFixed(3)})`);
       }
     } else if (hasSimilar) {
-      message = `Unverified implementation — similar to ${similarContracts.length} known contract(s) in Sourcify database`;
+      message = `Unverified implementation, similar to ${similarContracts.length} known contract(s) in Sourcify database`;
       console.log(`[Pipeline] Similar contracts found: ${similarContracts.length}`);
     } else {
       console.log(`[Pipeline] No similar contracts found`);
     }
 
     const unverifiedAnalysis = {
-      summary: 'Contract source is not verified on Sourcify — cannot assess safety.',
+      summary: 'Contract source is not verified on Sourcify, cannot assess safety.',
       explanation: 'Unverified implementations pose a critical risk as their source code cannot be inspected or audited. This upgrade introduced an implementation that has not been publicly verified.',
       recommendation: 'Do not interact with this proxy until the implementation source is verified on Sourcify.',
       confidence: 'high' as const,
@@ -168,10 +168,10 @@ export async function processUpgrade(
     return;
   }
 
-  console.log(`[Pipeline] Verified — continuing analysis`);
+  console.log(`[Pipeline] Verified, continuing analysis`);
 
-  // Step 2 — fetch all data in parallel
-  console.log(`\n[Pipeline] Step 2/4 — Fetching layouts, ABIs, meta, and NatSpec...`);
+  // Step 2, fetch all data in parallel
+  console.log(`\n[Pipeline] Step 2/4, Fetching layouts, ABIs, meta, and NatSpec...`);
   const [oldLayout, newLayout, oldABI, newABI, contractMeta, natSpec] = await Promise.all([
     getStorageLayout(oldImplAddress, chainId),
     getStorageLayout(newImplAddress, chainId),
@@ -192,8 +192,8 @@ export async function processUpgrade(
   console.log(`  Compiler:       ${contractMeta?.compilerVersion ?? "unknown"}`);
   console.log(`  Creation tx:    ${contractMeta?.creationTxHash ?? "unknown"}`);
 
-  // Step 3 — diffs + risk assessment
-  console.log(`\n[Pipeline] Step 3/4 — Running diffs and assessing risk...`);
+  // Step 3, diffs + risk assessment
+  console.log(`\n[Pipeline] Step 3/4, Running diffs and assessing risk...`);
 
   const storageDiff = hasStorageLayout
     ? diffStorageLayouts(oldLayout!, newLayout!)
@@ -214,7 +214,7 @@ export async function processUpgrade(
 
   if (matchType === "partial") {
     const bumped = bumpSeverity(severity);
-    console.log(`[Pipeline] Partial match — bumping severity ${severity} → ${bumped}`);
+    console.log(`[Pipeline] Partial match, bumping severity ${severity} → ${bumped}`);
     severity = bumped;
   }
 
@@ -225,7 +225,7 @@ export async function processUpgrade(
     const sevIdx = SEVERITY_ORDER.indexOf(severity);
     if (sevIdx < floorIdx) {
       console.log(
-        `[Pipeline] Filtered: ${severity} below threshold ${severityFloor} (set on agent.vigil.eth) — skipping AI + publish`,
+        `[Pipeline] Filtered: ${severity} below threshold ${severityFloor} (set on agent.vigil.eth), skipping AI + publish`,
       );
       return;
     }
@@ -238,8 +238,8 @@ export async function processUpgrade(
     }
   }
 
-  // Step 4 — AI analysis
-  console.log(`\n[Pipeline] Step 4/5 — AI analysis...`);
+  // Step 4, AI analysis
+  console.log(`\n[Pipeline] Step 4/5, AI analysis...`);
   const analysis = await analyseUpgrade({
     proxyAddress,
     oldImplementation: oldImplAddress,
@@ -251,7 +251,7 @@ export async function processUpgrade(
     natSpec,
   });
 
-  console.log('\n[Pipeline] Step 4.5 — Enriching with Apify social context...');
+  console.log('\n[Pipeline] Step 4.5, Enriching with Apify social context...');
   const apifyEnrichment = await enrichAlert(proxyAddress, newImplAddress);
 
   const alert = createAlert({
@@ -291,7 +291,7 @@ async function bootEnsConfig(): Promise<{
   publishedFeedUrl: string | null;
 }> {
   if (!hasSepoliaProvider()) {
-    console.log("[Vigil/ENS] SEPOLIA_RPC_URL not set — running without ENS identity (no severity filter, no name tagging)");
+    console.log("[Vigil/ENS] SEPOLIA_RPC_URL not set, running without ENS identity (no severity filter, no name tagging)");
     return { nameResolver: () => null, severityFloor: null, publishedFeedUrl: null };
   }
 
@@ -301,7 +301,7 @@ async function bootEnsConfig(): Promise<{
   try {
     const config = await resolveAgentConfig(VIGIL_AGENT_ENS_NAME);
     if (!config) {
-      console.warn(`[Vigil/ENS] No resolver set for ${VIGIL_AGENT_ENS_NAME} — skipping`);
+      console.warn(`[Vigil/ENS] No resolver set for ${VIGIL_AGENT_ENS_NAME}, skipping`);
     } else {
       if (config.description) console.log(`  description:   ${config.description}`);
       if (config.url) console.log(`  url:           ${config.url}`);

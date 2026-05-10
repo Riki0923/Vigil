@@ -26,7 +26,7 @@ function pathForChain(chainId: number | undefined): string {
   const filename = chainId !== undefined ? FILE_BY_CHAIN[chainId] : undefined;
   if (chainId !== undefined && !filename) {
     console.warn(
-      `[jsonStore] no per-chain file mapping for chainId=${chainId} — falling back to ${FALLBACK_FILENAME}`,
+      `[jsonStore] no per-chain file mapping for chainId=${chainId}, falling back to ${FALLBACK_FILENAME}`,
     );
   }
   return path.join(DATA_DIR, filename ?? FALLBACK_FILENAME);

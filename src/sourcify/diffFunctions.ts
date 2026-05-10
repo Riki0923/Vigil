@@ -163,7 +163,7 @@ function logABIDiff(diff: ABIDiff): void {
     diff.removedFunctions.length === 0 &&
     diff.modifiedFunctions.length === 0
   ) {
-    console.log(`[ABIDiff] No changes detected — ABIs are identical`);
+    console.log(`[ABIDiff] No changes detected, ABIs are identical`);
     console.log(`[ABIDiff] ${line}`);
     return;
   }

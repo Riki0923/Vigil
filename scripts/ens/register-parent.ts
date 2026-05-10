@@ -134,7 +134,7 @@ async function main(): Promise<void> {
   await commitTx.wait();
   console.log(`[register] Commit confirmed.`);
 
-  // Poll the on-chain commitment age — wall-clock can drift from chain time on
+  // Poll the on-chain commitment age, wall-clock can drift from chain time on
   // slow/sparse blocks. Wait until block.timestamp - commit_ts >= minCommitmentAge + buffer.
   console.log(
     `[register] Waiting for commit to mature on-chain (minAge ${minAge}s + ${COMMITMENT_WAIT_BUFFER_SECS}s buffer)...`,

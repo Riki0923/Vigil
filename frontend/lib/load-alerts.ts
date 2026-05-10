@@ -71,7 +71,7 @@ async function fetchAlertsFromSwarm(feedUrl: string): Promise<Alert[]> {
     return swarmCache.alerts;
   }
   if (swarmInFlight) {
-    log.info(`Swarm read already in flight — joining`);
+    log.info(`Swarm read already in flight, joining`);
     return swarmInFlight;
   }
   swarmInFlight = doFetchAlertsFromSwarm(feedUrl).finally(() => {
@@ -161,7 +161,7 @@ async function doFetchAlertsFromSwarm(feedUrl: string): Promise<Alert[]> {
     }
   }
 
-  log.ok(`Swarm read complete — ${alerts.length} alert(s) recovered`);
+  log.ok(`Swarm read complete, ${alerts.length} alert(s) recovered`);
   swarmCache = { alerts, cachedAt: Date.now() };
   return alerts;
 }
@@ -192,7 +192,7 @@ async function readAlertsFile(filePath: string, defaultChainId: number): Promise
 
 export async function loadAlerts(): Promise<LoadAlertsResult> {
   log.start(
-    `start — SWARM_FEED_URL=${SWARM_FEED_URL ? "set" : "unset"}`,
+    `start, SWARM_FEED_URL=${SWARM_FEED_URL ? "set" : "unset"}`,
   );
 
   const [swarmAlerts, main, mainnetFile, sepoliaFile] = await Promise.all([
@@ -209,7 +209,7 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
     };
 
   const merged: Alert[] = [];
-  // Swarm first so its values win the dedup pass — Swarm is the authoritative
+  // Swarm first so its values win the dedup pass, Swarm is the authoritative
   // decentralized source; local JSON files are just per-instance caches.
   merged.push(...swarmAlerts);
   if (main) merged.push(...main.alerts);
@@ -224,11 +224,11 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
   });
 
   log.info(
-    `composition — swarm=${swarmAlerts.length} mainFile=${main?.alerts.length ?? 0} mainnetFile=${mainnetFile?.alerts.length ?? 0} sepoliaFile=${sepoliaFile?.alerts.length ?? 0} seedFallback=${sepoliaFile ? 0 : seedAlertsBaseSepolia.length} → deduped=${deduped.length}`,
+    `composition, swarm=${swarmAlerts.length} mainFile=${main?.alerts.length ?? 0} mainnetFile=${mainnetFile?.alerts.length ?? 0} sepoliaFile=${sepoliaFile?.alerts.length ?? 0} seedFallback=${sepoliaFile ? 0 : seedAlertsBaseSepolia.length} → deduped=${deduped.length}`,
   );
 
   if (deduped.length === 0) {
-    log.warn("no alerts found — returning mock");
+    log.warn("no alerts found, returning mock");
     return { alerts: mockAlerts, source: "mock" };
   }
 

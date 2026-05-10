@@ -16,5 +16,5 @@ export function TimeAgo({ iso }: { iso: string }) {
     return () => clearInterval(id);
   }, [iso]);
 
-  return <>{label ?? "—"}</>;
+  return <>{label ?? ", "}</>;
 }

@@ -11,7 +11,8 @@ const DEMO_TARGET_ROOT = path.join(__dirname, "..");
 const V2_CONTRACT_PATH = path.join(DEMO_TARGET_ROOT, "contracts", "DemoTokenV2.sol");
 
 const BUILD_STAMP_REGEX = /string public constant VIGIL_DEMO_BUILD = "[^"]*";/;
-const TARGET_DEMO_BALANCE = ethers.parseEther("100");
+const TARGET_DEMO_BALANCE = ethers.parseEther("1000");
+const APPROVAL_AMOUNT = ethers.parseEther("1000");
 const MIN_GAS_BALANCE = ethers.parseEther("0.005");
 
 interface PreviousUpgrade {
@@ -65,7 +66,7 @@ async function main(): Promise<void> {
   }
 
   if (!fs.existsSync(paths.alertsPath)) {
-    log.warn(`${paths.alertsPath} not found — is the watcher running?`);
+    log.warn(`${paths.alertsPath} not found, is the watcher running?`);
   }
 
   log.info(`proxy:        ${record.proxyAddress}`);
@@ -155,18 +156,20 @@ async function main(): Promise<void> {
   const existingBalance: bigint = await token.balanceOf(demoWallet.address);
   if (existingBalance < TARGET_DEMO_BALANCE) {
     const need = TARGET_DEMO_BALANCE - existingBalance;
-    log.step(`minting ${ethers.formatEther(need)} DEMO to demo wallet…`);
+    log.step(`minting ${ethers.formatEther(need)} VIGIL to demo wallet…`);
     const mintTx = await token.mint(demoWallet.address, need);
     await mintTx.wait();
   } else {
     log.info(
-      `demo wallet holds ${ethers.formatEther(existingBalance)} DEMO — skipping mint`,
+      `demo wallet holds ${ethers.formatEther(existingBalance)} VIGIL, skipping mint`,
     );
   }
 
   const tokenAsDemo = token.connect(demoWallet) as typeof token;
-  log.sign("approving DEMO_SPENDER for MaxUint256 from DEMO_WALLET…");
-  const approveTx = await tokenAsDemo.approve(demoSpender, ethers.MaxUint256);
+  log.sign(
+    `approving DEMO_SPENDER for ${ethers.formatEther(APPROVAL_AMOUNT)} VIGIL from DEMO_WALLET…`,
+  );
+  const approveTx = await tokenAsDemo.approve(demoSpender, APPROVAL_AMOUNT);
   await approveTx.wait();
 
   let allowance: bigint = 0n;
@@ -177,12 +180,14 @@ async function main(): Promise<void> {
     await new Promise((r) => setTimeout(r, 2000));
   }
   if (allowance === 0n) {
-    throw new Error("allowance is still 0 after 3 retries — approve may have failed");
+    throw new Error("allowance is still 0 after 3 retries, approve may have failed");
   }
 
   // ── Summary ──────────────────────────────────────────────────
   const allowanceLabel =
-    allowance === ethers.MaxUint256 ? "MaxUint256" : allowance.toString();
+    allowance === ethers.MaxUint256
+      ? "MaxUint256"
+      : `${ethers.formatEther(allowance)} VIGIL`;
   const networkLabel = paths.name === "baseMainnet" ? "Base mainnet" : "Base Sepolia";
   console.log("");
   log.info(`proxy:           ${record.proxyAddress}`);

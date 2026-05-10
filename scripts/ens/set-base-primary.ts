@@ -6,7 +6,7 @@
 //   Base mainnet: 0x0000000000D8e504002cC26E3Ec46D81971C1664
 //
 // The registrar supports three patterns. We use `setNameForOwnableWithSignature`
-// because the demo proxy is a UUPS Ownable upgradeable contract — the proxy
+// because the demo proxy is a UUPS Ownable upgradeable contract, the proxy
 // itself doesn't expose a "set my reverse name" method, but ENSIP-19 lets us
 // authorize the action via an off-chain signature from `proxy.owner()`.
 //
@@ -38,7 +38,7 @@ type NetworkConfig = {
   defaultParentName: string;
 };
 
-const SIGNATURE_VALIDITY_SECS = 30 * 60; // 30 min — contract caps at block.timestamp + 1h, must stay strictly under
+const SIGNATURE_VALIDITY_SECS = 30 * 60; // 30 min, contract caps at block.timestamp + 1h, must stay strictly under
 
 const PROXY_OWNABLE_ABI = ["function owner() view returns (address)"] as const;
 
@@ -125,13 +125,13 @@ async function main(): Promise<void> {
   const { proxyAddress } = JSON.parse(raw) as DemoDeployment;
   console.log(`[set-primary] Proxy:     ${proxyAddress}`);
 
-  // Verify the signer is the proxy's owner — the registrar will check this.
+  // Verify the signer is the proxy's owner, the registrar will check this.
   const proxy = new ethers.Contract(proxyAddress, PROXY_OWNABLE_ABI, provider);
   const proxyOwner = (await proxy.getFunction("owner")()) as string;
   console.log(`[set-primary] Proxy owner: ${proxyOwner}`);
   if (proxyOwner.toLowerCase() !== signerAddr.toLowerCase()) {
     throw new Error(
-      `Signer is not the proxy's owner — registrar will reject. Owner=${proxyOwner}, signer=${signerAddr}.`,
+      `Signer is not the proxy's owner, registrar will reject. Owner=${proxyOwner}, signer=${signerAddr}.`,
     );
   }
 

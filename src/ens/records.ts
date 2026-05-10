@@ -1,7 +1,7 @@
 // Typed schema for the text records Vigil reads from and writes to ENS.
 //
 // Convention: keys under the `vigil.*` namespace are project-specific; bare keys
-// (`description`, `url`) follow ENSIP-5. Values must be public — no secrets.
+// (`description`, `url`) follow ENSIP-5. Values must be public, no secrets.
 
 import type { AlertSeverity } from "../alerts/index.js";
 

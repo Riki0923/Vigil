@@ -1,4 +1,4 @@
-// Next.js instrumentation hook — runs once at server boot, before any
+// Next.js instrumentation hook, runs once at server boot, before any
 // request is handled. We use it to pre-warm the Swarm alert cache so the
 // first user request doesn't trigger a ~30s cold Mantaray traversal that
 // Railway's edge proxy times out at ~30s.

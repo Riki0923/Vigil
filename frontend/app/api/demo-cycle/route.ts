@@ -13,7 +13,7 @@ type CycleResult = {
   upgradeTxHash: string;
   v2ImplAddress: string;
   proxyAddress: string;
-  allowance: "unlimited";
+  allowance: string;
   chainId: 8453;
 };
 
@@ -121,7 +121,7 @@ async function runCycle(startedAt: string): Promise<void> {
         upgradeTxHash,
         v2ImplAddress: record.v2ImplAddress,
         proxyAddress: record.proxyAddress,
-        allowance: "unlimited",
+        allowance: "1,000 Vigil Tokens",
         chainId: 8453,
       },
     };

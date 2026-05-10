@@ -13,7 +13,7 @@ export async function sendTelegramAlert(alert: any, swarmUrl?: string): Promise<
 
   console.log('[Telegram] Token:', TELEGRAM_BOT_TOKEN?.substring(0, 20));
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.warn('[Telegram] Missing token or chat ID — skipping');
+    console.warn('[Telegram] Missing token or chat ID, skipping');
     return;
   }
 

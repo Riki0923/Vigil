@@ -1,13 +1,13 @@
 // Backfill a contiguous range of Ethereum blocks from any JSON-RPC endpoint
 // into a Swarm chain-archive manifest. Standalone PoC for the
-// "Ethereum Chain State on Swarm" pattern — block-archive option.
+// "Ethereum Chain State on Swarm" pattern, block-archive option.
 //
 // Usage:
 //   tsx scripts/chain-archive/backfill.ts --from <n> --to <n> [--rpc <url>]
 //                                         [--topic <name>]
 //
 // Required env: SWARM_PRIVATE_KEY (32-byte hex). Defaults RPC to RPC_URL.
-// On completion prints the subscriber-facing feed URL — anyone resolving it
+// On completion prints the subscriber-facing feed URL, anyone resolving it
 // gets the latest manifest with every archived block under blocks/<n>.
 
 import * as dotenv from "dotenv";
@@ -60,7 +60,7 @@ async function main(): Promise<void> {
 
   const rawKey = process.env.SWARM_PRIVATE_KEY;
   if (!rawKey) {
-    throw new Error("SWARM_PRIVATE_KEY is not set — pin a 32-byte hex key in .env");
+    throw new Error("SWARM_PRIVATE_KEY is not set, pin a 32-byte hex key in .env");
   }
 
   const privateKey = new PrivateKey(Buffer.from(rawKey.replace(/^0x/, ""), "hex"));
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
 
     const block = await provider.getBlock(n);
     if (!block) {
-      console.warn(`[backfill] Block ${n} not available from RPC — skipping`);
+      console.warn(`[backfill] Block ${n} not available from RPC, skipping`);
       continue;
     }
 

@@ -29,7 +29,7 @@ export function NarrativeStrip({
   agentIdentity: AgentIdentity | null;
 }) {
   // Captured once on mount to avoid impure `Date.now()` during render.
-  // "Last 24h" is anchored at mount time — fine for pitch flows.
+  // "Last 24h" is anchored at mount time, fine for pitch flows.
   const [nowMs] = useState(() => Date.now());
 
   const stats = useMemo(() => {

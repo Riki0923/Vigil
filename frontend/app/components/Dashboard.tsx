@@ -151,7 +151,7 @@ export function Dashboard({
                   <span
                     className="sev-medium ml-2 rounded-md border px-2 py-0.5 text-xs"
                   >
-                    showing mock data — agent hasn&apos;t emitted yet
+                    showing mock data, agent hasn&apos;t emitted yet
                   </span>
                 )}
               </p>

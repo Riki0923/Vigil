@@ -42,7 +42,7 @@ export function ConnectButton() {
       <div className="flex items-center gap-2">
         <span
           className="brand-border bg-white/60 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-mono text-brand"
-          title="Demo wallet — used for the embedded demo flow until you connect your own wallet"
+          title="Demo wallet, used for the embedded demo flow until you connect your own wallet"
         >
           <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--severity-medium)]" />
           {truncate(DEMO_WALLET)}

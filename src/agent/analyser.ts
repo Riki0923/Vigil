@@ -9,7 +9,7 @@ function getClient(): OpenAI {
   return client;
 }
 
-// Groq fallback — swap imports above and replace getClient() if needed:
+// Groq fallback, swap imports above and replace getClient() if needed:
 // let groqClient: Groq | null = null;
 // function getClient(): Groq {
 //   if (!groqClient) groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -60,7 +60,7 @@ Analyse this proxy upgrade and return a JSON object with fields:
 - summary: one sentence describing what changed
 - explanation: 2-3 sentences of technical detail about the risk
 - recommendation: what the protocol team should do
-- confidence: your confidence level — "low", "medium", or "high"
+- confidence: your confidence level, "low", "medium", or "high"
 
 Upgrade details:
 - Proxy: ${proxyAddress}

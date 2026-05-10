@@ -32,7 +32,7 @@ The agent reads concerns 1–4 at boot and on each upgrade event, and writes con
 
 ```text
 ┌────────────────────────────────────────────────────────────┐
-│       ETHEREUM MAINNET — vigilbot.eth (parent, prod)       │
+│       ETHEREUM MAINNET, vigilbot.eth (parent, prod)       │
 │       (Sepolia mirror: vigil.eth, identical schema)        │
 │                                                            │
 │   ┌─────────────────────┐   ┌──────────────────────┐       │
@@ -72,7 +72,7 @@ ENS is the single source of truth for these concerns. Subscribers and downstream
 
 - **ENSIP-5 text records.** All `description`, `url`, and `vigil.*` keys are plain text records on the resolver. The dashboard reads them via viem's `getEnsText`; the agent reads them via ethers' `Resolver.getText`.
 - **ENSIP-11 multichain address records.** Watched-target subnames carry an `addr` typed for the Base coin type matching the active network: Base mainnet (`0x80000000 | 8453 = 2147492101`) or Base Sepolia (`0x80000000 | 84532 = 2147567180`). A name resolved on Ethereum returns the Base address; the resolution lives entirely on the parent chain regardless of where the resolved address operates.
-- **ENSIP-19 L2 reverse names.** The watched contract on Base has its primary name set to the target subname via the L2 reverse registrar. For `OwnableUpgradeable` contracts (such as the demo proxy), the call uses `setNameForOwnableWithSignature` — the contract owner's ERC-191 signature authorizes the registrar, with no modification to the watched contract required. The L2ReverseRegistrar is deployed on both Base mainnet and Base Sepolia.
+- **ENSIP-19 L2 reverse names.** The watched contract on Base has its primary name set to the target subname via the L2 reverse registrar. For `OwnableUpgradeable` contracts (such as the demo proxy), the call uses `setNameForOwnableWithSignature`, the contract owner's ERC-191 signature authorizes the registrar, with no modification to the watched contract required. The L2ReverseRegistrar is deployed on both Base mainnet and Base Sepolia.
 
 ## Subname Records Reference
 
@@ -111,7 +111,7 @@ The dashboard renders ENS records server-side via viem against the active networ
 ║                                                               ║
 ║  agent.vigilbot.eth                       [view on ENS app ↗]║
 ║                                                               ║
-║  Vigil — autonomous proxy upgrade auditor                     ║
+║  Vigil, autonomous proxy upgrade auditor                     ║
 ║  https://github.com/Riki0923/Vigil ↗                          ║
 ║                                                               ║
 ║  SEVERITY FLOOR  [MEDIUM]                                     ║
@@ -148,7 +148,7 @@ Source: `fetchAgentIdentity()` reads the six identity records on the active agen
 ╚════════════════════════════════════════════════════════════╝
 ```
 
-Source: `fetchTargetReputations(names)` reads ENSIP-11 addr plus the four `vigil.last-*` reputation records per target. The four reputation records are the bidirectional half of the integration — written by the agent, not seeded once.
+Source: `fetchTargetReputations(names)` reads ENSIP-11 addr plus the four `vigil.last-*` reputation records per target. The four reputation records are the bidirectional half of the integration, written by the agent, not seeded once.
 
 ## Data Flow
 
@@ -195,7 +195,7 @@ No Vigil-controlled endpoint is involved.
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `VIGIL_ENS_NETWORK` | No (defaults to `mainnet` on both agent and frontend) | `mainnet` reads `vigilbot.eth`; `sepolia` reads `vigil.eth` — preserved for local testing. |
+| `VIGIL_ENS_NETWORK` | No (defaults to `mainnet` on both agent and frontend) | `mainnet` reads `vigilbot.eth`; `sepolia` reads `vigil.eth`, preserved for local testing. |
 | `ETH_MAINNET_RPC_URL` | Yes for the default `VIGIL_ENS_NETWORK=mainnet` | Ethereum mainnet JSON-RPC endpoint. Used for reads + writes against `vigilbot.eth`. |
 | `ETH_SEPOLIA_RPC_URL` | Only if `VIGIL_ENS_NETWORK=sepolia` | Ethereum Sepolia JSON-RPC endpoint. Used for reads + writes against `vigil.eth`. |
 | `ENS_REGISTRAR_PRIVATE_KEY` | For write operations only | Wallet that owns the parent name. The same key signs both Sepolia and mainnet writes; it must own `vigilbot.eth` on mainnet (or `vigil.eth` on Sepolia for the legacy code path). |
@@ -220,7 +220,7 @@ No Vigil-controlled endpoint is involved.
 | [`abi.ts`](../../src/ens/abi.ts) | Minimal ABIs for the ENS Registry, public Resolver, NameWrapper, and L2 ReverseRegistrar. |
 | [`records.ts`](../../src/ens/records.ts) | Typed record key constants and parsers for `vigil.capabilities` and `vigil.severity-min`. |
 | [`reader.ts`](../../src/ens/reader.ts) | `resolveAgentConfig`, `resolveTargetConfig`, `isNameRegistered`. Selects active network via `VIGIL_ENS_NETWORK`. |
-| [`writer.ts`](../../src/ens/writer.ts) | `updateTargetReputation` — performs the four `setText` calls per alert against the active network. |
+| [`writer.ts`](../../src/ens/writer.ts) | `updateTargetReputation`, performs the four `setText` calls per alert against the active network. |
 | [`cache.ts`](../../src/ens/cache.ts) | Address-to-name lookup backed by `data/ens-targets.json`. |
 
 ### Frontend (`frontend/lib/ens.ts`)

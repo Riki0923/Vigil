@@ -120,7 +120,7 @@ function AlertCard({
           {fullPipeline?.natSpec?.title && (
             <p className="text-brand-soft mt-1 text-xs">
               <span className="font-mono text-brand">{fullPipeline.natSpec.title}</span>
-              {fullPipeline.natSpec.notice && <span> — {fullPipeline.natSpec.notice}</span>}
+              {fullPipeline.natSpec.notice && <span>, {fullPipeline.natSpec.notice}</span>}
             </p>
           )}
 
@@ -136,7 +136,7 @@ function AlertCard({
               <Tag tone="info">verified · layout available</Tag>
             )}
             {fullPipeline && isPartialMatch(fullPipeline.matchType) && (
-              <Tag tone="warn">⚠️ partial match — source matches but metadata differs, which is suspicious</Tag>
+              <Tag tone="warn">⚠️ partial match, source matches but metadata differs, which is suspicious</Tag>
             )}
             {unverified && unverified.similarContracts.length > 0 && (
               <Tag tone="info">🔍 Similar to {unverified.similarContracts.length} known contract(s) in Sourcify</Tag>
@@ -349,7 +349,7 @@ function SimilarContractsSection({ contracts }: { contracts: SimilarContract[] }
   return (
     <details className="mt-3">
       <summary className="text-brand-soft cursor-pointer text-xs transition hover:text-brand">
-        Similar contracts ({contracts.length}) — Sourcify bytecode similarity
+        Similar contracts ({contracts.length}), Sourcify bytecode similarity
       </summary>
       <div className="brand-border mt-2 rounded-md border bg-white/60 p-3">
         <ul className="text-brand space-y-1 text-xs font-mono">
