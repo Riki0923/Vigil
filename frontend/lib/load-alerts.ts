@@ -65,16 +65,30 @@ function extractOwnerFromFeedUrl(url: string): string | null {
   return match?.[1] ?? null;
 }
 
+// Hard cap on the SSR Swarm walk so the home page always renders within
+// Railway's ~30s edge timeout. If bzz.limo is slow or unreachable, fall back
+// to whatever else is available (cache, file, mock) instead of hanging.
+const SWARM_FETCH_TIMEOUT_MS = 8_000;
+
 async function fetchAlertsFromSwarm(feedUrl: string): Promise<Alert[]> {
   if (swarmCache && Date.now() - swarmCache.cachedAt < SWARM_CACHE_TTL_MS) {
-    log.info(`Swarm cache hit → ${swarmCache.alerts.length} alert(s)`);
+    log.info(`Swarm cache hit, ${swarmCache.alerts.length} alert(s)`);
     return swarmCache.alerts;
   }
   if (swarmInFlight) {
     log.info(`Swarm read already in flight, joining`);
     return swarmInFlight;
   }
-  swarmInFlight = doFetchAlertsFromSwarm(feedUrl).finally(() => {
+  const timeoutPromise = new Promise<Alert[]>((resolve) =>
+    setTimeout(() => {
+      log.warn(`Swarm fetch timed out after ${SWARM_FETCH_TIMEOUT_MS}ms, returning []`);
+      resolve([]);
+    }, SWARM_FETCH_TIMEOUT_MS),
+  );
+  swarmInFlight = Promise.race([
+    doFetchAlertsFromSwarm(feedUrl),
+    timeoutPromise,
+  ]).finally(() => {
     swarmInFlight = null;
   });
   return swarmInFlight;
