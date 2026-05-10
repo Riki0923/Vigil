@@ -54,30 +54,33 @@ async function main(): Promise<void> {
   const token = await ethers.getContractAt("DemoTokenV1", proxyAddress, owner);
 
   const existingBalance: bigint = await token.balanceOf(demoWallet.address);
-  const targetBalance = ethers.parseEther("100");
+  const targetBalance = ethers.parseEther("1000");
+  const approvalAmount = ethers.parseEther("1000");
   if (existingBalance < targetBalance) {
     const mintAmount = targetBalance - existingBalance;
-    log.seed(`minting ${ethers.formatEther(mintAmount)} DEMO to demo wallet…`);
+    log.seed(`minting ${ethers.formatEther(mintAmount)} VIGIL to demo wallet…`);
     const mintTx = await token.mint(demoWallet.address, mintAmount);
     await mintTx.wait();
     log.tx(`mint tx: ${mintTx.hash}`);
   } else {
     log.info(
-      `demo wallet already holds ${ethers.formatEther(existingBalance)} DEMO, skipping mint`,
+      `demo wallet already holds ${ethers.formatEther(existingBalance)} VIGIL, skipping mint`,
     );
   }
 
-  log.sign("approving spender for MAX from demo wallet…");
+  log.sign(
+    `approving spender for ${ethers.formatEther(approvalAmount)} VIGIL from demo wallet…`,
+  );
   const tokenAsDemo = token.connect(demoWallet) as typeof token;
-  const approveTx = await tokenAsDemo.approve(demoSpender, ethers.MaxUint256);
+  const approveTx = await tokenAsDemo.approve(demoSpender, approvalAmount);
   await approveTx.wait();
   log.tx(`approve tx: ${approveTx.hash}`);
 
   const allowance: bigint = await token.allowance(demoWallet.address, demoSpender);
   const balance: bigint = await token.balanceOf(demoWallet.address);
   log.info(`post-state:`);
-  log.info(`  balance:   ${ethers.formatEther(balance)} DEMO`);
-  log.info(`  allowance: ${allowance.toString()}`);
+  log.info(`  balance:   ${ethers.formatEther(balance)} VIGIL`);
+  log.info(`  allowance: ${ethers.formatEther(allowance)} VIGIL`);
   log.ok("done.");
 }
 

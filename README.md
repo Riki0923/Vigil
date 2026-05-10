@@ -323,7 +323,7 @@ npm run demo-cycle              # Base Sepolia (default)
 npm run demo-cycle:mainnet      # Base mainnet (production demo)
 ```
 
-This bumps the `VIGIL_DEMO_BUILD` constant in `DemoTokenV2.sol` (so the new impl bytecode is unique → fresh `Upgraded` event), deploys a fresh V2 impl, calls `upgradeToAndCall` on the existing proxy, verifies on Sourcify, and re-approves `DEMO_WALLET → DEMO_SPENDER` for `MaxUint256`. End-to-end ≈ 30 s, ≈ 0.0005 ETH on Base Sepolia (mainnet costs more, gas-dependent). Same proxy address across pitches, so ENS records and frontend env vars don't need re-pointing.
+This bumps the `VIGIL_DEMO_BUILD` constant in `DemoTokenV2.sol` (so the new impl bytecode is unique → fresh `Upgraded` event), deploys a fresh V2 impl, calls `upgradeToAndCall` on the existing proxy, verifies on Sourcify, and re-approves `DEMO_WALLET → DEMO_SPENDER` for 1,000 VIGIL. End-to-end ≈ 30 s, ≈ 0.0005 ETH on Base Sepolia (mainnet costs more, gas-dependent). Same proxy address across pitches, so ENS records and frontend env vars don't need re-pointing.
 
 Inside Claude Code, the [`demo-cycle` skill](.claude/skills/demo-cycle/SKILL.md) wraps the same script and additionally polls `data/alerts-base-sepolia.json` to confirm the watcher saw the new alert. Trigger it with phrases like "demo cycle", "arm the demo", or "prep the pitch". Spec + plan: [`docs/superpowers/specs/2026-05-09-demo-cycle-design.md`](docs/superpowers/specs/2026-05-09-demo-cycle-design.md), [`docs/superpowers/plans/2026-05-09-demo-cycle.md`](docs/superpowers/plans/2026-05-09-demo-cycle.md).
 
