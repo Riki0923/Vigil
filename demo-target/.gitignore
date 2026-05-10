@@ -5,4 +5,6 @@ typechain-types/
 dist/
 .env
 deployments/
-.openzeppelin/
+.openzeppelin/*
+!.openzeppelin/base.json
+!.openzeppelin/base-sepolia.json
