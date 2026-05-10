@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { Bee, MantarayNode, Topic } from "@ethersphere/bee-js";
 import type { Alert } from "./types";
 import { mockAlerts } from "./mock-alerts";
 import { seedAlertsBaseSepolia, seedAlertsBaseSepoliaUpdatedAt } from "./seed-alerts";
@@ -9,7 +10,19 @@ import { makeLogger } from "./log";
 const log = makeLogger("loadAlerts");
 
 const SWARM_FEED_URL = process.env.SWARM_FEED_URL;
-const SWARM_FETCH_TIMEOUT_MS = 5_000;
+const SWARM_GATEWAY = "https://bzz.limo";
+// Same topic the Worker uses in src/swarm/index.ts. Keep these in sync.
+const VIGIL_MANIFEST_TOPIC = Topic.fromString("vigil-manifest");
+// Cap how many historical blocks we pull from Swarm per cold cache miss.
+// loadRecursively walks the full manifest tree (~14s for ~400 entries on bzz.limo),
+// then we download the top-N payloads. 50 is enough to populate the dashboard
+// without making cold renders punishingly slow.
+const SWARM_MAX_BLOCKS = 50;
+const SWARM_FETCH_CONCURRENCY = 10;
+// 5-minute in-process cache so the cold-fetch happens once per demo run, not
+// once per page render. Subsequent renders within the window are near-instant.
+const SWARM_CACHE_TTL_MS = 5 * 60 * 1000;
+let swarmCache: { alerts: Alert[]; cachedAt: number } | null = null;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "../..");
@@ -40,34 +53,90 @@ function isAlert(value: unknown): value is Alert {
   );
 }
 
-async function fetchLatestFromSwarm(url: string): Promise<Alert | null> {
-  log.step(`Swarm fetch → ${url}`);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), SWARM_FETCH_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
-    log.info(
-      `Swarm response status=${res.status} content-type=${res.headers.get("content-type") ?? "n/a"} feed-index=${res.headers.get("swarm-feed-index") ?? "n/a"}`,
-    );
-    if (!res.ok) {
-      log.warn(`Swarm non-200 (${res.status}) — skipping`);
-      return null;
-    }
-    const data = await res.json();
-    if (!isAlert(data)) {
-      log.warn(`Swarm payload failed isAlert validation`, data);
-      return null;
-    }
-    log.ok(
-      `Swarm OK — id=${data.id} severity=${data.severity} proxy=${data.proxyAddress} tx=${data.txHash}`,
-    );
-    return data;
-  } catch (err) {
-    log.warn("Swarm fetch failed", err);
-    return null;
-  } finally {
-    clearTimeout(timeout);
+// Pulls the full alert history from Swarm by walking the Mantaray manifest the
+// Worker writes to via `ChainArchive.archiveBlock(blockNumber, { alert, block })`.
+// Each leaf at `blocks/<n>` is content-addressed JSON; we collect leaves, fetch
+// in parallel batches, and return Alert[] sorted newest first.
+function extractOwnerFromFeedUrl(url: string): string | null {
+  const match = url.match(/\/feeds\/(0x[0-9a-fA-F]{40})/);
+  return match?.[1] ?? null;
+}
+
+async function fetchAlertsFromSwarm(feedUrl: string): Promise<Alert[]> {
+  if (swarmCache && Date.now() - swarmCache.cachedAt < SWARM_CACHE_TTL_MS) {
+    log.info(`Swarm cache hit → ${swarmCache.alerts.length} alert(s)`);
+    return swarmCache.alerts;
   }
+
+  const owner = extractOwnerFromFeedUrl(feedUrl);
+  if (!owner) {
+    log.warn(`Cannot extract owner address from feed URL: ${feedUrl}`);
+    return [];
+  }
+
+  log.step(`Swarm read → owner=${owner}`);
+  const bee = new Bee(SWARM_GATEWAY);
+  const feedReader = bee.makeFeedReader(VIGIL_MANIFEST_TOPIC, owner);
+
+  let manifestRef;
+  try {
+    const result = await feedReader.downloadReference();
+    manifestRef = result.reference;
+    log.info(`Feed reference: ${manifestRef.toHex().slice(0, 16)}...`);
+  } catch (err) {
+    log.warn("Feed read failed", err);
+    return [];
+  }
+
+  let node: MantarayNode;
+  try {
+    node = await MantarayNode.unmarshal(bee, manifestRef);
+    await node.loadRecursively(bee);
+  } catch (err) {
+    log.warn("Manifest load failed", err);
+    return [];
+  }
+
+  const blockEntries: { blockNumber: number; targetAddress: Uint8Array }[] = [];
+  for (const entry of node.collect()) {
+    const m = /^blocks\/(\d+)$/.exec(entry.fullPathString);
+    if (m && m[1]) {
+      blockEntries.push({
+        blockNumber: parseInt(m[1], 10),
+        targetAddress: entry.targetAddress,
+      });
+    }
+  }
+
+  blockEntries.sort((a, b) => b.blockNumber - a.blockNumber);
+  const limited = blockEntries.slice(0, SWARM_MAX_BLOCKS);
+  log.info(
+    `Manifest has ${blockEntries.length} block(s); fetching most recent ${limited.length}`,
+  );
+
+  const alerts: Alert[] = [];
+  for (let i = 0; i < limited.length; i += SWARM_FETCH_CONCURRENCY) {
+    const batch = limited.slice(i, i + SWARM_FETCH_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (entry) => {
+        try {
+          const data = await bee.downloadData(entry.targetAddress);
+          const parsed = JSON.parse(data.toUtf8()) as { alert?: unknown };
+          if (parsed.alert && isAlert(parsed.alert)) return parsed.alert;
+          return null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    for (const a of results) {
+      if (a) alerts.push(a);
+    }
+  }
+
+  log.ok(`Swarm read complete — ${alerts.length} alert(s) recovered`);
+  swarmCache = { alerts, cachedAt: Date.now() };
+  return alerts;
 }
 
 async function readAlertsFile(filePath: string, defaultChainId: number): Promise<{
@@ -99,8 +168,8 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
     `start — SWARM_FEED_URL=${SWARM_FEED_URL ? "set" : "unset"}`,
   );
 
-  const [swarmLatest, main, mainnetFile, sepoliaFile] = await Promise.all([
-    SWARM_FEED_URL ? fetchLatestFromSwarm(SWARM_FEED_URL) : Promise.resolve(null),
+  const [swarmAlerts, main, mainnetFile, sepoliaFile] = await Promise.all([
+    SWARM_FEED_URL ? fetchAlertsFromSwarm(SWARM_FEED_URL) : Promise.resolve<Alert[]>([]),
     readAlertsFile(ALERTS_FILE, BASE_CHAIN_ID),
     readAlertsFile(ALERTS_MAINNET_FILE, BASE_CHAIN_ID),
     readAlertsFile(ALERTS_SEPOLIA_FILE, BASE_SEPOLIA_CHAIN_ID),
@@ -113,7 +182,9 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
     };
 
   const merged: Alert[] = [];
-  if (swarmLatest) merged.push(swarmLatest);
+  // Swarm first so its values win the dedup pass — Swarm is the authoritative
+  // decentralized source; local JSON files are just per-instance caches.
+  merged.push(...swarmAlerts);
   if (main) merged.push(...main.alerts);
   if (mainnetFile) merged.push(...mainnetFile.alerts);
   if (sepolia) merged.push(...sepolia.alerts);
@@ -126,7 +197,7 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
   });
 
   log.info(
-    `composition — swarm=${swarmLatest ? 1 : 0} mainFile=${main?.alerts.length ?? 0} mainnetFile=${mainnetFile?.alerts.length ?? 0} sepoliaFile=${sepoliaFile?.alerts.length ?? 0} seedFallback=${sepoliaFile ? 0 : seedAlertsBaseSepolia.length} → deduped=${deduped.length}`,
+    `composition — swarm=${swarmAlerts.length} mainFile=${main?.alerts.length ?? 0} mainnetFile=${mainnetFile?.alerts.length ?? 0} sepoliaFile=${sepoliaFile?.alerts.length ?? 0} seedFallback=${sepoliaFile ? 0 : seedAlertsBaseSepolia.length} → deduped=${deduped.length}`,
   );
 
   if (deduped.length === 0) {
@@ -137,7 +208,7 @@ export async function loadAlerts(): Promise<LoadAlertsResult> {
   deduped.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   const latestUpdated = [
-    swarmLatest?.timestamp,
+    swarmAlerts[0]?.timestamp,
     main?.updatedAt,
     mainnetFile?.updatedAt,
     sepolia?.updatedAt,

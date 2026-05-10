@@ -11,6 +11,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.63",
     "@ai-sdk/react": "^3.0.179",
+    "@ethersphere/bee-js": "^12.1.0",
     "@tanstack/react-query": "^5.100.9",
     "ai": "^6.0.177",
     "next": "16.2.6",
