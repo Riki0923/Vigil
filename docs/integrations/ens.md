@@ -26,7 +26,7 @@ Six distinct concerns are served by ENS records on the active parent and its sub
 | 5 | L2 reverse name (ENSIP-19) | reverse record on Base mainnet | the watched contract on Base mainnet |
 | 6 | Reputation log | `vigil.last-severity`, `vigil.last-upgrade-at`, `vigil.last-tx`, `vigil.upgrade-count` | each watched-target subname, written by the agent |
 
-The agent reads concerns 1–4 at boot and on each upgrade event, and writes concern 6 after every emitted alert. The dashboard reads identity and reputation server-side at request time.
+The agent reads concerns 1-4 at boot and on each upgrade event, and writes concern 6 after every emitted alert. The dashboard reads identity and reputation server-side at request time.
 
 ## Architecture
 

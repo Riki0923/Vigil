@@ -290,7 +290,7 @@ npm run cycle:mainnet      # Base mainnet equivalent (creates a new proxy, only 
 # or run the steps individually:
 npm run deploy             # deploy V1 proxy on Sepolia, verify on Sourcify + Basescan
 npm run deploy:mainnet     # same on Base mainnet
-npm run seed-demo-wallet   # mint DEMO + approve(spender, MAX) from a separate demo wallet
+npm run seed-demo-wallet   # mint 1,000 VIGIL + approve(spender, 1,000) from a separate demo wallet
 npm run upgrade            # deploy V2, upgrade proxy, fires Upgraded(address)
 npm run upgrade:mainnet    # same on Base mainnet
 npm run reset              # wipe Sepolia deployments/ to start from a clean slate
@@ -305,7 +305,7 @@ Point Vigil's `RPC_URL` at the same Base Sepolia endpoint as the demo target whi
 
 The marquee demo: a wallet with an active approval on the demo proxy gets a one-click "revoke before exploit" path the moment the malicious V2 upgrade hits.
 
-1. Run `npm run cycle` from [`demo-target/`](demo-target/) to deploy V1 + V2 fresh, then `npm run seed-demo-wallet` to mint DEMO and `approve(DEMO_SPENDER, MAX)` from the demo wallet.
+1. Run `npm run cycle` from [`demo-target/`](demo-target/) to deploy V1 + V2 fresh, then `npm run seed-demo-wallet` to mint 1,000 VIGIL and `approve(DEMO_SPENDER, 1,000)` from the demo wallet.
 2. Paste the new proxy address into `frontend/.env.local` as `NEXT_PUBLIC_DEMO_PROXY_BASE_SEPOLIA`, plus `NEXT_PUBLIC_DEMO_WALLET`, `NEXT_PUBLIC_DEMO_WALLET_PRIVATE_KEY`, and `NEXT_PUBLIC_DEMO_SPENDER`.
 3. Open the dashboard and switch the chain selector to **Base Sepolia**. The dashboard reads `allowance(DEMO_WALLET, DEMO_SPENDER)` on every refresh.
 4. Trigger the upgrade (`npm run upgrade`). Vigil's pipeline emits a new alert; the matching alert card surfaces a red **"Your wallet is exposed, revoke approval"** banner.
@@ -388,7 +388,7 @@ ENS, read at agent boot and consumed by the ENS scripts:
 | `DEPLOYER_PRIVATE_KEY` | Funded EOA used to deploy V1, V2, and the proxy. The same key works on both networks; fund it on whichever you target. |
 | `ETHERSCAN_API_KEY` | Etherscan v2 multichain key, one key covers Base Sepolia and Base mainnet (Sourcify needs no key). |
 | `DEMO_WALLET_PRIVATE_KEY` | Optional, only required by `seed-demo-wallet[:mainnet]`. Funded EOA whose approval the revoke flow targets. |
-| `DEMO_SPENDER_ADDRESS` | Optional, only required by `seed-demo-wallet[:mainnet]`. Address that gets pre-approved for `MaxUint256`. |
+| `DEMO_SPENDER_ADDRESS` | Optional, only required by `seed-demo-wallet[:mainnet]`. Address that gets pre-approved for 1,000 VIGIL by the demo wallet. |
 
 ## Status
 
