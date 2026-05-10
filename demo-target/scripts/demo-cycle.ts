@@ -1,4 +1,4 @@
-import hre, { ethers, upgrades } from "hardhat";
+import hre, { ethers } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -116,12 +116,18 @@ async function main(): Promise<void> {
   }
 
   // ── Deploy fresh V2 impl + upgrade proxy ─────────────────────
-  log.step("preparing fresh V2 impl…");
+  // We deploy the impl directly with the contract factory instead of going
+  // through upgrades.prepareUpgrade, because we deliberately want a "malicious"
+  // V2 to land on the proxy each cycle, OZ's safety checks would either reject
+  // it (storage layout, unsafe modifiers) or fail the manifest registration
+  // step in ways that are noisy and unhelpful for a pitch demo. The proxy is
+  // UUPS, so any subsequent valid upgrade call still works through the same
+  // implementation.
+  log.step("deploying fresh V2 impl…");
   const V2 = await ethers.getContractFactory("DemoTokenV2");
-  const v2ImplAddress = (await upgrades.prepareUpgrade(record.proxyAddress, V2, {
-    kind: "uups",
-    unsafeSkipStorageCheck: true,
-  })) as string;
+  const v2 = await V2.deploy();
+  await v2.waitForDeployment();
+  const v2ImplAddress = await v2.getAddress();
   log.deploy(`new V2 impl: ${v2ImplAddress}`);
 
   log.step("calling upgradeToAndCall…");
