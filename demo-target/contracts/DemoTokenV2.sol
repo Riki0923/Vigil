@@ -18,7 +18,7 @@ contract DemoTokenV2 is
     OwnableUpgradeable,
     UUPSUpgradeable
 {
-    string public constant VIGIL_DEMO_BUILD = "2026-05-10T07:36:20.926Z";
+    string public constant VIGIL_DEMO_BUILD = "2026-05-10T08:01:19.147Z";
 
     address public emergencyAdmin;
     bool public paused;
@@ -34,7 +34,7 @@ contract DemoTokenV2 is
         uint256 initialSupply,
         uint256 mintCap_
     ) external initializer {
-        __ERC20_init("DemoToken", "DEMO");
+        __ERC20_init("Vigil Token", "VIGIL");
         __Ownable_init(owner_);
         mintCap = mintCap_;
         _mint(owner_, initialSupply);

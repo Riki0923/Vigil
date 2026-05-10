@@ -25,7 +25,7 @@ contract DemoTokenV1 is
         uint256 initialSupply,
         uint256 mintCap_
     ) external initializer {
-        __ERC20_init("DemoToken", "DEMO");
+        __ERC20_init("Vigil Token", "VIGIL");
         __Ownable_init(owner_);
         mintCap = mintCap_;
         _mint(owner_, initialSupply);
