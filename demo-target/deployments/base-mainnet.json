@@ -122,10 +122,13 @@
       "upgradeTxHash": "0x2285cd2061b75e4291934641a04a5f4ef0966903d3419dd6d887f16076d73649",
       "upgradeBlockNumber": 45804112,
       "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0x58257e759D7780B84aD222c6f9B4B9D6E3DFa1D2",
+      "upgradedAt": "2026-05-10T07:36:28.206Z",
+      "upgradeTxHash": "0x9ba132f0a8b51081f1d8010679d8cf87c6ed1203c9363c3755d9fe5ecf9e946c",
+      "upgradeBlockNumber": 45804621,
+      "note": "demo-cycle replay"
     }
-  ],
-  "v2ImplAddress": "0x58257e759D7780B84aD222c6f9B4B9D6E3DFa1D2",
-  "upgradedAt": "2026-05-10T07:36:28.206Z",
-  "upgradeTxHash": "0x9ba132f0a8b51081f1d8010679d8cf87c6ed1203c9363c3755d9fe5ecf9e946c",
-  "upgradeBlockNumber": 45804621
+  ]
 }
