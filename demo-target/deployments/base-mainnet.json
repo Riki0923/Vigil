@@ -87,10 +87,31 @@
       "upgradeTxHash": "0x3e3c2af29389553e859657e51634e279442159e603c1148c7d58f9b01b0d0b6c",
       "upgradeBlockNumber": 45794121,
       "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0x5aFD4639bD18ffCe1f1f79ceFa8C0bc34628e63c",
+      "upgradedAt": "2026-05-10T01:49:10.252Z",
+      "upgradeTxHash": "0x84c94b4cbd66b352a28fdd4683b72503c87a76b1415e1f5d68d3b1616aa1ba2a",
+      "upgradeBlockNumber": 45794202,
+      "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0x9082e698001882371274cfbD6AA266F123441fBA",
+      "upgradedAt": "2026-05-10T01:55:03.821Z",
+      "upgradeTxHash": "0x96f1cc71a7085e65aa1cdc1445d67f0b639923ab8285522f75da2f47f4c00172",
+      "upgradeBlockNumber": 45794379,
+      "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0x245c1134626de7C7f9b7b2EB2395435503E92BAf",
+      "upgradedAt": "2026-05-10T01:56:12.360Z",
+      "upgradeTxHash": "0x56efac5fd894e392fce7ab287afaefe5214ad8f20ed1f1d03575a994f2d3a5ce",
+      "upgradeBlockNumber": 45794413,
+      "note": "demo-cycle replay"
     }
   ],
-  "v2ImplAddress": "0x5aFD4639bD18ffCe1f1f79ceFa8C0bc34628e63c",
-  "upgradedAt": "2026-05-10T01:49:10.252Z",
-  "upgradeTxHash": "0x84c94b4cbd66b352a28fdd4683b72503c87a76b1415e1f5d68d3b1616aa1ba2a",
-  "upgradeBlockNumber": 45794202
+  "v2ImplAddress": "0xE0bC22e14C79329d2B78a2cfe81E5E9D36eB56b3",
+  "upgradedAt": "2026-05-10T01:56:59.387Z",
+  "upgradeTxHash": "0x2063a4cabec04a41344cf4be12b16f4792a711ae20dc6c568e15d7acd0982c82",
+  "upgradeBlockNumber": 45794436
 }
