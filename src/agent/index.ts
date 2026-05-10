@@ -163,6 +163,7 @@ export async function processUpgrade(
     });
     const swarmUrl = await publishData(unverifiedAlert, block);
     await sendTelegramAlert(unverifiedAlert, swarmUrl ?? undefined);
+    if (swarmUrl) (unverifiedAlert as any).swarmUrl = swarmUrl;
     await emitAlert(unverifiedAlert, block.number);
     maybeWriteReputation(proxyName, unverifiedAlert.severity, txHash, unverifiedAlert.timestamp);
     return;
@@ -279,7 +280,7 @@ export async function processUpgrade(
 
     const swarmUrl = await publishData(alert, block);
     await sendTelegramAlert(alert, swarmUrl ?? undefined);
-
+    if (swarmUrl) (alert as any).swarmUrl = swarmUrl;
 
   await emitAlert(alert, block.number);
   maybeWriteReputation(proxyName, alert.severity, txHash, alert.timestamp);

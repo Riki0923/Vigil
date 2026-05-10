@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   abiSignature,
+  getSwarmUrl,
   isExactMatch,
   isFullPipelineRawData,
   isPartialMatch,
@@ -106,13 +107,16 @@ function AlertCard({
                 <span aria-hidden="true">✦</span>
                 Ask AI
               </button>
-              <button
-                disabled
-                className="btn-brand-ghost inline-flex cursor-not-allowed items-center gap-1 rounded px-2 py-0.5 text-xs opacity-50"
-                title="Swarm integration coming soon"
-              >
-                Swarm <span>↗</span>
-              </button>
+              {getSwarmUrl(alert) && (
+                <a
+                  href={getSwarmUrl(alert)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-brand-ghost inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs"
+                >
+                  🗄 Swarm
+                </a>
+              )}
               <time className="text-brand-soft text-xs"><TimeAgo iso={alert.timestamp} /></time>
             </div>
           </div>

@@ -134,8 +134,18 @@ export type Alert = {
   hasStorageLayout: boolean;
   message: string;
   rawData: unknown;
+  swarmUrl?: string;
   analysis?: AnalysisResult;
 };
+
+export function getSwarmUrl(alert: Alert): string | undefined {
+  if (alert.swarmUrl) return alert.swarmUrl;
+  if (alert.rawData && typeof alert.rawData === "object") {
+    const url = (alert.rawData as Record<string, unknown>).swarmUrl;
+    if (typeof url === "string") return url;
+  }
+  return undefined;
+}
 
 export function isFullPipelineRawData(raw: unknown): raw is FullPipelineRawData {
   if (!raw || typeof raw !== "object") return false;
