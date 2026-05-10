@@ -31,10 +31,66 @@
       "upgradeTxHash": "0x0764213afa617b95c2c9f8942b87c4abb239e2b9bbc8f1f51d9d5b067b1f191c",
       "upgradeBlockNumber": 45784993,
       "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0x52783dCBB9Ddff23A63f3a295976094239bBD934",
+      "upgradedAt": "2026-05-10T00:49:59.360Z",
+      "upgradeTxHash": "0x033ab8bb100a6948d31f163b4f790ee9e983d41aeca6b67c4be31ead69d43bc6",
+      "upgradeBlockNumber": 45792426,
+      "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0x4aE5b1cc1866952a50Cc61B925fF6356e9c7E72E",
+      "upgradedAt": "2026-05-10T01:24:25.216Z",
+      "upgradeTxHash": "0x925def557924c74528e38e6b46cf438710c86b2eeefcb841229c94a70bf205ea",
+      "upgradeBlockNumber": 45793460,
+      "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0x0c5d507791D3f540BA860231B362381e9c676B80",
+      "upgradedAt": "2026-05-10T01:27:43.706Z",
+      "upgradeTxHash": "0x1602b2c7f71bed901179c9761f7bbdedae3ec978befb44486bd6c0733d1b02c4",
+      "upgradeBlockNumber": 45793559,
+      "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0xD1E87A26cf5d4c201708Ba5A0E619ECc51b9BB65",
+      "upgradedAt": "2026-05-10T01:29:41.090Z",
+      "upgradeTxHash": "0xbaa878f31e057ee703ee9a92ca19bc45c38c809c819d01a0731b6059ffe39105",
+      "upgradeBlockNumber": 45793618,
+      "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0xe83Edc7a288A5ef4BaE867bfFd217Fa06687cE51",
+      "upgradedAt": "2026-05-10T01:30:47.776Z",
+      "upgradeTxHash": "0x80328144cdffd67286c9d827484b301ee1be13143f52df2e43a36f465ff32f40",
+      "upgradeBlockNumber": 45793651,
+      "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0xA154872099E1b96479BB4AFFAd672AfD739C56EC",
+      "upgradedAt": "2026-05-10T01:31:39.714Z",
+      "upgradeTxHash": "0x3a3e01bf3264d78a5b8954df7870d2a0387bdd064c0225532e404b8e375b6811",
+      "upgradeBlockNumber": 45793676,
+      "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0xb1D136CE88e2203Acf612C47d0bad312e3963645",
+      "upgradedAt": "2026-05-10T01:45:09.525Z",
+      "upgradeTxHash": "0x1c50dc70eea1be50e97cc144f9935b948a96a7a1bdd23885cefe7c32ff21aeaf",
+      "upgradeBlockNumber": 45794082,
+      "note": "demo-cycle replay"
+    },
+    {
+      "v2ImplAddress": "0xd4F586102Dc2705b4481495e3438fA2cB7BEd4e2",
+      "upgradedAt": "2026-05-10T01:46:27.685Z",
+      "upgradeTxHash": "0x3e3c2af29389553e859657e51634e279442159e603c1148c7d58f9b01b0d0b6c",
+      "upgradeBlockNumber": 45794121,
+      "note": "demo-cycle replay"
     }
   ],
-  "v2ImplAddress": "0x52783dCBB9Ddff23A63f3a295976094239bBD934",
-  "upgradedAt": "2026-05-10T00:49:59.360Z",
-  "upgradeTxHash": "0x033ab8bb100a6948d31f163b4f790ee9e983d41aeca6b67c4be31ead69d43bc6",
-  "upgradeBlockNumber": 45792426
+  "v2ImplAddress": "0x5aFD4639bD18ffCe1f1f79ceFa8C0bc34628e63c",
+  "upgradedAt": "2026-05-10T01:49:10.252Z",
+  "upgradeTxHash": "0x84c94b4cbd66b352a28fdd4683b72503c87a76b1415e1f5d68d3b1616aa1ba2a",
+  "upgradeBlockNumber": 45794202
 }
