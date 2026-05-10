@@ -10,9 +10,13 @@ import {
 import {
   DEMO_SPENDER,
   demoProxyForChain,
+  explorerAddressUrl,
   explorerTxUrl,
+  formatAllowance,
+  shortenAddress,
 } from "@/lib/wallet";
 import { useViewChain } from "./ViewChainContext";
+import { TimeAgo } from "./TimeAgo";
 
 type Address = `0x${string}`;
 
@@ -98,6 +102,12 @@ export function HeroThreatBanner({ alerts }: { alerts: Alert[] }) {
         ? "Mining…"
         : "Revoke now";
 
+  const contractName = matchingAlert.proxyName ?? "this contract";
+  const allowanceFmt =
+    typeof allowance === "bigint" ? formatAllowance(allowance) : null;
+  const sevTextStyle = { color: "var(--sev-critical-text)" } as const;
+  const sevDimStyle = { color: "var(--sev-critical-text)", opacity: 0.75 } as const;
+
   return (
     <div
       className="mb-5 rounded-lg border-2 px-5 py-4 shadow-lg"
@@ -117,16 +127,16 @@ export function HeroThreatBanner({ alerts }: { alerts: Alert[] }) {
         <div className="min-w-0 flex-1">
           <div
             className="text-[10px] font-bold uppercase tracking-widest"
-            style={{ color: "var(--sev-critical-text)", opacity: 0.75 }}
+            style={sevDimStyle}
           >
             your wallet is exposed
           </div>
           <div
             className="mt-0.5 text-sm font-bold leading-snug sm:text-base"
-            style={{ color: "var(--sev-critical-text)" }}
+            style={sevTextStyle}
           >
-            Active approval on {matchingAlert.proxyName ?? "this contract"} —
-            the new implementation can move your tokens.
+            Active approval on {contractName} — the new implementation can move
+            your tokens.
           </div>
         </div>
         <button
@@ -141,6 +151,59 @@ export function HeroThreatBanner({ alerts }: { alerts: Alert[] }) {
           {buttonLabel}
         </button>
       </div>
+
+      <div
+        className="mt-3 ml-12 rounded-md border px-3 py-2 text-[11px]"
+        style={{
+          borderColor: "rgba(231, 76, 60, 0.35)",
+          background: "rgba(255,255,255,0.35)",
+        }}
+      >
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 font-mono">
+          <dt style={sevDimStyle}>contract</dt>
+          <dd className="truncate" style={sevTextStyle}>
+            <span className="font-bold">{contractName}</span>{" "}
+            <a
+              href={explorerAddressUrl(viewChainId, matchingAlert.proxyAddress)}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              {shortenAddress(matchingAlert.proxyAddress)} ↗
+            </a>
+          </dd>
+
+          <dt style={sevDimStyle}>new impl</dt>
+          <dd className="truncate" style={sevTextStyle}>
+            <a
+              href={explorerAddressUrl(viewChainId, matchingAlert.implementationAddress)}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              {shortenAddress(matchingAlert.implementationAddress)} ↗
+            </a>{" "}
+            <span style={sevDimStyle}>
+              (deployed <TimeAgo iso={matchingAlert.timestamp} />)
+            </span>
+          </dd>
+
+          <dt style={sevDimStyle}>allowance</dt>
+          <dd style={sevTextStyle}>
+            {allowanceFmt ? (
+              <>
+                <span className="font-bold">{allowanceFmt.label}</span>
+                <div className="mt-0.5 text-[10px] font-normal" style={sevDimStyle}>
+                  {allowanceFmt.detail}
+                </div>
+              </>
+            ) : (
+              <span style={sevDimStyle}>loading…</span>
+            )}
+          </dd>
+        </dl>
+      </div>
+
       {(txHash || error) && (
         <div className="mt-2 flex items-center gap-2 pl-12 text-[11px]">
           {txHash && (
@@ -151,7 +214,7 @@ export function HeroThreatBanner({ alerts }: { alerts: Alert[] }) {
               className="font-mono underline"
               style={{ color: "var(--sev-critical-text)", opacity: 0.8 }}
             >
-              view tx ↗
+              view revoke tx ↗
             </a>
           )}
           {error && (

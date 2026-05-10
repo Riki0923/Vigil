@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx src/agent/index.ts",
     "start": "tsx src/agent/index.ts",
-    "build:railway": "cd frontend && npm ci && npm run build",
+    "build:railway": "cd demo-target && npm ci && npx hardhat compile && cd ../frontend && npm ci && npm run build",
     "start:railway": "concurrently --names worker,frontend --prefix-colors blue.bold,green.bold \"tsx src/agent/index.ts\" \"cd frontend && npm run start\"",
     "typecheck": "tsc --noEmit",
     "ens:resolve": "tsx scripts/ens/resolve.ts",

@@ -12,6 +12,7 @@ import { UpgradesChart, type ChartBucket } from "./UpgradesChart";
 import { ConnectButton } from "./ConnectButton";
 import { ChainSelector } from "./ChainSelector";
 import { HeroThreatBanner } from "./HeroThreatBanner";
+import { DemoControlsCard } from "./DemoControlsCard";
 import { NarrativeStrip } from "./NarrativeStrip";
 import { useViewChain } from "./ViewChainContext";
 
@@ -158,6 +159,8 @@ export function Dashboard({
           </div>
 
           <HeroThreatBanner alerts={alerts} />
+
+          <DemoControlsCard alerts={alerts} />
 
           <NarrativeStrip alerts={alerts} agentIdentity={agentIdentity} />
 
