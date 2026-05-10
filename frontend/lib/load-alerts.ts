@@ -23,6 +23,9 @@ const SWARM_FETCH_CONCURRENCY = 10;
 // once per page render. Subsequent renders within the window are near-instant.
 const SWARM_CACHE_TTL_MS = 5 * 60 * 1000;
 let swarmCache: { alerts: Alert[]; cachedAt: number } | null = null;
+// In-flight dedup: when N concurrent requests arrive on a cold cache, share
+// one fetch instead of starting N parallel Mantaray walks against bzz.limo.
+let swarmInFlight: Promise<Alert[]> | null = null;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "../..");
@@ -67,7 +70,31 @@ async function fetchAlertsFromSwarm(feedUrl: string): Promise<Alert[]> {
     log.info(`Swarm cache hit → ${swarmCache.alerts.length} alert(s)`);
     return swarmCache.alerts;
   }
+  if (swarmInFlight) {
+    log.info(`Swarm read already in flight — joining`);
+    return swarmInFlight;
+  }
+  swarmInFlight = doFetchAlertsFromSwarm(feedUrl).finally(() => {
+    swarmInFlight = null;
+  });
+  return swarmInFlight;
+}
 
+// Pre-warm the cache at server boot (called from instrumentation.ts). The
+// first user request after boot then hits the warm cache instead of triggering
+// a 30s cold Mantaray walk that Railway's edge proxy times out at ~30s.
+export async function warmSwarmCache(): Promise<void> {
+  if (!SWARM_FEED_URL) return;
+  log.start("Pre-warming Swarm cache at boot");
+  try {
+    await fetchAlertsFromSwarm(SWARM_FEED_URL);
+    log.ok("Swarm cache pre-warmed");
+  } catch (err) {
+    log.warn("Pre-warm failed (non-fatal)", err);
+  }
+}
+
+async function doFetchAlertsFromSwarm(feedUrl: string): Promise<Alert[]> {
   const owner = extractOwnerFromFeedUrl(feedUrl);
   if (!owner) {
     log.warn(`Cannot extract owner address from feed URL: ${feedUrl}`);
