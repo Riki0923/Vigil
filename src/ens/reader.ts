@@ -10,12 +10,13 @@ import {
   type EnsNetwork,
 } from "./client.js";
 
-// The agent runtime resolves ENS against this network. Defaults to sepolia for
-// backward compatibility; set VIGIL_ENS_NETWORK=mainnet to read from vigilbot.eth.
+// The agent runtime resolves ENS against this network. Defaults to mainnet
+// (production parent vigilbot.eth); set VIGIL_ENS_NETWORK=sepolia to read from
+// vigil.eth on Sepolia (legacy code path, retained for testing).
 function getActiveNetwork(): EnsNetwork {
   const v = process.env.VIGIL_ENS_NETWORK?.toLowerCase();
-  if (v === "mainnet") return "mainnet";
-  return "sepolia";
+  if (v === "sepolia") return "sepolia";
+  return "mainnet";
 }
 import {
   parseCapabilities,
